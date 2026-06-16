@@ -33,6 +33,8 @@ from models.bam import BATransformer, BATModelArgs
 from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
 from models.nope import NoPEModelArgs, NoPETransformer
 from models.nope_ssmax import NoPESSMaxModelArgs, NoPESSMaxTransformer
+from models.cabam import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
 
 from utils import print0, round_to_multiple, set_lr, compute_radam_lr, DistributedShardedDataset, StateMonitor
 ########################################################################################
@@ -48,7 +50,7 @@ if __name__ == "__main__":
     # file system input / output
     parser.add_argument("--dataset", type=str, default="10B", help="data/ directory containing the training data")
     parser.add_argument("--log_dir", type=str, default="logs", help="output directory to which to write logs and checkpoints")
-    parser.add_argument("--position_encoding", type=str, default="nope", help="nope|nope_ssmax|sinusoidal|sinusoidal_ssmax|rotary|rotary_ssmax|alibi|alibi_ssmax|bam|bam_ssmax")
+    parser.add_argument("--position_encoding", type=str, default="nope", help="nope|nope_ssmax|sinusoidal|sinusoidal_ssmax|rotary|rotary_ssmax|alibi|alibi_ssmax|bam|bam_ssmax|cabam|dape_alibi")
     parser.add_argument("--model_size", type=str, default="l12", help="l6|l8|l12|l15|l18|l24")
     # Bayesian Attention Mechanism arguments
     parser.add_argument("--global_prior", action=argparse.BooleanOptionalAction, help="whether to use a global prior for BAM")
@@ -119,7 +121,8 @@ if __name__ == "__main__":
     assert args.dtype in {"float32", "float16", "bfloat16"}
     # assert args.model_size in {"l6", "l8", "l12", "l15", "l18", "l24"}
     assert args.position_encoding in {"rotary", "rotary_ssmax", "sinusoidal", "sinusoidal_ssmax", 
-                                      "alibi", "alibi_ssmax", "bam", "bam_ssmax", "nope", "nope_ssmax"}
+                                      "alibi", "alibi_ssmax", "bam", "bam_ssmax", "nope", "nope_ssmax", 
+                                      "cabam", "dape_alibi"}
     # assert only one of min_tokens_per_step, tokens_per_step, max_tokens_per_step is set
     assert sum([args.min_tokens_per_step is not None, 
                 args.tokens_per_step is not None, 
@@ -214,6 +217,8 @@ if __name__ == "__main__":
         "bam_ssmax":        (SSMaxBATModelArgs,     SSMaxBATransformer           ),
         "nope":             (NoPEModelArgs,         NoPETransformer              ),
         "nope_ssmax":       (NoPESSMaxModelArgs,    NoPESSMaxTransformer         ),
+        "cabam":            (CABAMModelArgs,        CABAMTransformer             ),
+        "dape_alibi":       (DAPEALiBiModelArgs,    DAPEALiBiTransformer         ),
     }[args.position_encoding]
 
     # init the model
