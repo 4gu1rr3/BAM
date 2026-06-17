@@ -4,6 +4,7 @@ from torch.nn.attention.flex_attention import flex_attention
 
 from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
 from models.cabam    import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
 
 # Hiperparâmetros ────────────────────────────────────────────────────────────────────────
 BATCH_SIZE   = 4
@@ -13,10 +14,10 @@ N_RUNS       = 20
 DEVICE       = "cuda"
 
 MODEL_KWARGS = dict(
-    dim=768,
-    n_layers=12,
-    n_heads=16,
-    ffn_dim_multiplier=2,
+    dim=1024,
+    n_layers=32,
+    n_heads=32,
+    ffn_dim_multiplier=None, # Usar default (4×)
     max_seq_len=SEQ_LEN,
     max_batch_size=BATCH_SIZE,
 )
@@ -98,7 +99,24 @@ def main():
 
     del cabam_model # Tirar da memória
     torch.cuda.empty_cache() # Limpar cache
-
+    
+    # DAPE ALiBi ────────────────────────────────────────────────
+    dape_alibi_args = DAPEALiBiModelArgs(**MODEL_KWARGS)
+    dape_alibi_model = DAPEALiBiTransformer(dape_alibi_args).to(DEVICE).to(torch.bfloat16)
+    
+    tokens, seq_codes = make_inputs(BATCH_SIZE, SEQ_LEN, dape_alibi_args.vocab_size, DEVICE)
+    
+    dape_alibi_time, dape_alibi_mem = measure(dape_alibi_model, tokens, seq_codes, N_WARMUP, N_RUNS)
+    dape_alibi_total, dape_alibi_nonembed = count_params(dape_alibi_model)
+    print("\n── DAPE ALiBi ───────────────────────────────")
+    print(f"  Parâmetros totais     : {dape_alibi_total:>12,}")
+    print(f"  Parâmetros (sem emb.) : {dape_alibi_nonembed:>12,}")
+    print(f"  Latência forward      : {dape_alibi_time:>10.2f} ms")
+    print(f"  Pico de VRAM          : {dape_alibi_mem:>10.1f} MB")
+    
+    del dape_alibi_model # Tirar da memória
+    torch.cuda.empty_cache() # Limpar cache
+    
     # Comparação ────────────────────────────────────────────────
     delta_time = cabam_time - bam_time
     ratio_time = cabam_time / bam_time
@@ -107,6 +125,14 @@ def main():
     ratio_mem  = cabam_mem  / bam_mem
     
     delta_params = cabam_total - bam_total
+    
+    delta_time_dape = dape_alibi_time - bam_time
+    ratio_time_dape = dape_alibi_time / bam_time
+    
+    delta_mem_dape  = dape_alibi_mem  - bam_mem
+    ratio_mem_dape  = dape_alibi_mem  / bam_mem
+    
+    delta_params_dape = dape_alibi_total - bam_total
 
     print("\n── CA-BAM vs BAM SSMax ───────────")
     print(f"  Diferença de Parâmetros          : {delta_params:>+12,}")
@@ -114,5 +140,11 @@ def main():
     print(f"  Diferença de VRAM                : {delta_mem:>+10.1f} MB  ({ratio_mem:.3f}×)")
     print()
 
+    print("── DAPE-ALiBi vs BAM SSMax ───────────")
+    print(f"  Diferença de Parâmetros          : {delta_params_dape:>+12,}")
+    print(f"  Diferença de Latência            : {delta_time_dape:>+10.2f} ms  ({ratio_time_dape:.3f}×)")
+    print(f"  Diferença de VRAM                : {delta_mem_dape:>+10.1f} MB  ({ratio_mem_dape:.3f}×)")
+    print()
+    
 if __name__ == "__main__":
     main()
