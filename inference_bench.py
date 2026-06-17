@@ -17,7 +17,7 @@ MODEL_KWARGS = dict(
     dim=1024,
     n_layers=32,
     n_heads=32,
-    ffn_dim_multiplier=None, # Usar default (4×)
+    ffn_dim_multiplier=None,
     max_seq_len=SEQ_LEN,
     max_batch_size=BATCH_SIZE,
 )
@@ -33,10 +33,12 @@ def measure(model, tokens, seq_codes, n_warmup, n_runs):
     """Mede latência (ms) e pico de VRAM (MB) do forward pass."""
     model.eval()
     torch.cuda.reset_peak_memory_stats(DEVICE)
-
+    torch.cuda.synchronize()
+    
     with torch.no_grad():
         for _ in range(n_warmup):
             _ = model(tokens, seq_codes=seq_codes)
+        torch.cuda.reset_peak_memory_stats(DEVICE)
         torch.cuda.synchronize()
 
         # Medição
@@ -61,7 +63,7 @@ def count_params(model):
 def main():
     assert torch.cuda.is_available(), "CUDA não encontrado."
     print(f"\nDevice : {torch.cuda.get_device_name(0)}")
-    print(f"Batch  : {BATCH_SIZE}  |  SeqLen : {SEQ_LEN}")
+    print(f"Batch  : {BATCH_SIZE: 2d}  |  SeqLen : {SEQ_LEN}")
     print(f"Warmup : {N_WARMUP}  |  Runs   : {N_RUNS}\n")
 
     # BAM SSMax ────────────────────────────────────────────────

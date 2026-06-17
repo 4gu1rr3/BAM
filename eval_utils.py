@@ -19,7 +19,8 @@ from models.bam import BATransformer, BATModelArgs
 from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
 from models.nope import NoPEModelArgs, NoPETransformer
 from models.nope_ssmax import NoPESSMaxModelArgs, NoPESSMaxTransformer
-
+from models.cabam import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
 
 
 class PasskeyEvaluator:
@@ -343,6 +344,8 @@ class Evaluator:
             "bam_ssmax":    (SSMaxBATModelArgs,     SSMaxBATransformer      ),
             "nope":         (NoPEModelArgs,         NoPETransformer         ),
             "nope_ssmax":   (NoPESSMaxModelArgs,    NoPESSMaxTransformer    ),
+            "cabam":        (CABAMModelArgs,        CABAMTransformer        ),
+            "dape_alibi":   (DAPEALiBiModelArgs,    DAPEALiBiTransformer    ),
         }[args['args']['position_encoding']]
         model_dict = torch.load(os.path.join(dir, f'model.pt'))
         model = Transformer(ModelArgs(**args['model_args']))
