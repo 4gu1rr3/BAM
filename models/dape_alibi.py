@@ -7,7 +7,7 @@ from torch import nn
 import torch.nn.functional as F
 from einops import rearrange
 
-from .alibi_woFlexAttention import ALiBiModelArgs, RMSNorm, FeedForward, repeat_kv
+from .alibi_wo_flex_attention import ALiBiModelArgs, RMSNorm, FeedForward, repeat_kv
 
 
 @dataclass
