@@ -145,9 +145,9 @@ class BayesianAttention(nn.Module):
         ssmax_mul = section_log_len * self.seq_scale
         prior_params = self.prior(x) if self.local_positional_encoding else global_prior
         
-        alpha_t = prior_params[..., 0] 
-        beta_t = prior_params[..., 1]
-        mu_t = prior_params[..., 2]
+        alpha_t = prior_params[..., 0].contiguous()
+        beta_t = prior_params[..., 1].contiguous()
+        mu_t = prior_params[..., 2].contiguous()
         def score_mod(score, b, h, q_idx, kv_idx):
             alpha = alpha_t[b, h, q_idx]
             beta = beta_t[b, h, q_idx]

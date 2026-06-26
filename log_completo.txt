@@ -1,0 +1,2182 @@
+CUDA_VISIBLE_DEVICES : 5
+GPU física em uso     : NVIDIA RTX A6000
+
+Device : NVIDIA RTX A6000
+Batch  :  4  |  SeqLen : 2048
+Warmup : 5  |  Runs   : 20
+Modelos: ['bam', 'cabam', 'dape']
+
+Traceback (most recent call last):
+  File "/mnt/B-SSD/yasmin/BAM/inference_bench.py", line 132, in <module>
+    main()
+  File "/mnt/B-SSD/yasmin/BAM/inference_bench.py", line 111, in main
+    results[key] = bench_model(label, ModelArgs, ModelClass, MODEL_KWARGS)
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/BAM/inference_bench.py", line 69, in bench_model
+    t_ms, mem_mb      = measure(model, tokens, seq_codes, N_WARMUP, N_RUNS)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/BAM/inference_bench.py", line 47, in measure
+    _ = model(tokens, seq_codes=seq_codes)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 472, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1779, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/modules/module.py", line 1790, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_dynamo/eval_frame.py", line 1038, in compile_wrapper
+    raise e.remove_dynamo_frames() from None  # see TORCHDYNAMO_VERBOSE=1
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/compile_fx.py", line 1053, in _compile_fx_inner
+    raise InductorError(e, currentframe()).with_traceback(
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/compile_fx.py", line 1037, in _compile_fx_inner
+    mb_compiled_graph = fx_codegen_and_compile(
+                        ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/compile_fx.py", line 1798, in fx_codegen_and_compile
+    return scheme.codegen_and_compile(gm, example_inputs, inputs_to_check, graph_kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/compile_fx.py", line 1485, in codegen_and_compile
+    graph.run(*example_inputs)
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/graph.py", line 1025, in run
+    return super().run(*args)
+           ^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/fx/interpreter.py", line 200, in run
+    self.env[node] = self.run_node(node)
+                     ^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/graph.py", line 1809, in run_node
+    result = super().run_node(n)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/fx/interpreter.py", line 297, in run_node
+    return getattr(self, n.op)(n.target, args, kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/graph.py", line 1417, in call_function
+    raise LoweringException(
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/graph.py", line 1399, in call_function
+    out = lowerings[target](*args, **kwargs)  # type: ignore[index]
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/lowering.py", line 518, in wrapped
+    out = decomp_fn(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/kernel/flex/flex_attention.py", line 438, in flex_attention
+    error = flex_attention_template.maybe_append_choice(
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/select_algorithm.py", line 1806, in maybe_append_choice
+    choice = self.generate(generate_with_caching=True, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/select_algorithm.py", line 2075, in generate
+    result = self.generate_and_load(
+             ^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/select_algorithm.py", line 1998, in generate_and_load
+    result = generate_code(kernel)
+             ^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/select_algorithm.py", line 1951, in generate_code
+    template = kernel.render(self.template, kwargs, caching_enabled)
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/select_algorithm.py", line 1465, in render
+    template.render(**template_env, **kwargs),
+    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/jinja2/environment.py", line 1295, in render
+    self.environment.handle_exception()
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/jinja2/environment.py", line 942, in handle_exception
+    raise rewrite_traceback_stack(source=source)
+  File "<template>", line 336, in top-level template code
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/select_algorithm.py", line 921, in modification
+    out = subgraph.data.inner_fn(())
+          ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/lowering.py", line 682, in inner_fn
+    out = load(index)
+          ^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/lowering.py", line 3939, in inner_fn
+    return x_loader(index_inner_fn(idx))
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/lowering.py", line 682, in inner_fn
+    out = load(index)
+          ^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/ir.py", line 2861, in loader
+    return inner(reindex(idx))
+           ^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/ir.py", line 2861, in loader
+    return inner(reindex(idx))
+           ^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/lowering.py", line 682, in inner_fn
+    out = load(index)
+          ^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/lowering.py", line 682, in inner_fn
+    out = load(index)
+          ^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/lowering.py", line 682, in inner_fn
+    out = load(index)
+          ^^^^^^^^^^^
+  [Previous line repeated 1 more time]
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/ir.py", line 4558, in loader
+    indexer = self.make_indexer()
+              ^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/ir.py", line 4477, in make_indexer
+    return self.get_layout().make_indexer()
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_inductor/ir.py", line 4015, in make_indexer
+    assert FlexibleLayout.allow_indexing, (
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+torch._inductor.exc.InductorError: LoweringException: AssertionError: convert FlexibleLayout to FixedLayout first
+  target: flex_attention
+  args[0]: TensorBox(
+    ReinterpretView(
+      StorageBox(
+        ExternKernelOut(
+          python_kernel_name='extern_kernels.mm',
+          name=buf22,
+          layout=FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+          inputs=[ReinterpretView(
+            StorageBox(
+              ComputedBuffer(name='buf21', layout=FixedLayout('cuda:0', torch.bfloat16, size=[4, 2048, 1024], stride=[2097152, 1024, 1]), data=Pointwise(
+                'cuda',
+                torch.bfloat16,
+                def inner_fn(index):
+                    i0, i1, i2 = index
+                    tmp0 = ops.load(arg5_1, i2 + 1024 * i1 + 2097152 * i0)
+                    tmp1 = ops.to_dtype(tmp0, torch.float32, src_dtype=torch.bfloat16)
+                    tmp2 = ops.load(buf20, i1 + 2048 * i0)
+                    tmp3 = ops.index_expr(1024, torch.float32)
+                    tmp4 = tmp2 / tmp3
+                    tmp5 = ops.constant(1e-05, torch.float32)
+                    tmp6 = tmp4 + tmp5
+                    tmp7 = ops.rsqrt(tmp6)
+                    tmp8 = tmp1 * tmp7
+                    tmp9 = ops.to_dtype(tmp8, torch.bfloat16, src_dtype=torch.float32)
+                    tmp10 = ops.load(arg6_1, i2)
+                    tmp11 = tmp9 * tmp10
+                    return tmp11
+                ,
+                ranges=[4, 2048, 1024],
+                origin_node=mul_1,
+                origins=OrderedSet([mul_1, convert_element_type_13, mul, conv...,
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                    return output * self.weight,
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                    return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+                ,
+                }
+              ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+            origins=OrderedSet([mm, view_9, mul_1, convert_element_type_1...,
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                return output * self.weight,
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                output = self._norm(x.float()).type_as(x),
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                output = self._norm(x.float()).type_as(x),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+            ,
+            }
+          ), ReinterpretView(
+            StorageBox(
+              InputBuffer(name='arg7_1', layout=FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1024, 1]))
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1, 1024]),
+            origins=OrderedSet([mm, view_9, mul_1, convert_element_type_1...,
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                return output * self.weight,
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                output = self._norm(x.float()).type_as(x),
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                output = self._norm(x.float()).type_as(x),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+            ,
+            }
+          )],
+          constant_args=(),
+          kwargs={},
+          output_view=None,
+          python_kernel_name=extern_kernels.mm,
+          cpp_kernel_name=at::mm_out,
+          ordered_kwargs_for_cpp_kernel=['out'],
+          op_overload=aten.mm.out,
+          arg_properties=[{'name': 'self', 'type': Tensor, 'default_value': None}, {'name': 'mat2', 'type': Tensor, 'default_value': None}],
+          allarg_properties={'self': {'type': Tensor, 'default_value': None}, 'mat2': {'type': Tensor, 'default_value': None}, 'out': {'type': Tensor, 'default_value': None}},
+          kwarg_properties=None,
+          unbacked_bindings={},
+          mutation_outputs=[],
+          origin_node=mm,
+          origins=OrderedSet([mm, view_9, mul_1, convert_element_type_1...,
+          stack_traces = {,
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+              h = layer(h, mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+              h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+              queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+          ,
+          }
+        )
+      ),
+      FixedLayout('cuda:0', torch.bfloat16, size=[4, 32, 2048, 32], stride=[2097152, 32, 1024, 1]),
+      origins=OrderedSet([permute_6, view_15, view_10]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 150, in forward,
+          queries = queries.transpose(1, 2)  # (bs, n_local_heads, seqlen, head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 142, in forward,
+          queries = queries.view(bsz, seqlen, self.n_local_heads, self.head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+          queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+      ,
+      }
+    )
+  )
+  args[1]: TensorBox(
+    ReinterpretView(
+      StorageBox(
+        ExternKernelOut(
+          python_kernel_name='extern_kernels.mm',
+          name=buf23,
+          layout=FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+          inputs=[ReinterpretView(
+            StorageBox(
+              ComputedBuffer(name='buf21', layout=FixedLayout('cuda:0', torch.bfloat16, size=[4, 2048, 1024], stride=[2097152, 1024, 1]), data=Pointwise(
+                'cuda',
+                torch.bfloat16,
+                def inner_fn(index):
+                    i0, i1, i2 = index
+                    tmp0 = ops.load(arg5_1, i2 + 1024 * i1 + 2097152 * i0)
+                    tmp1 = ops.to_dtype(tmp0, torch.float32, src_dtype=torch.bfloat16)
+                    tmp2 = ops.load(buf20, i1 + 2048 * i0)
+                    tmp3 = ops.index_expr(1024, torch.float32)
+                    tmp4 = tmp2 / tmp3
+                    tmp5 = ops.constant(1e-05, torch.float32)
+                    tmp6 = tmp4 + tmp5
+                    tmp7 = ops.rsqrt(tmp6)
+                    tmp8 = tmp1 * tmp7
+                    tmp9 = ops.to_dtype(tmp8, torch.bfloat16, src_dtype=torch.float32)
+                    tmp10 = ops.load(arg6_1, i2)
+                    tmp11 = tmp9 * tmp10
+                    return tmp11
+                ,
+                ranges=[4, 2048, 1024],
+                origin_node=mul_1,
+                origins=OrderedSet([mul_1, convert_element_type_13, mul, conv...,
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                    return output * self.weight,
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                    return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+                ,
+                }
+              ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+            origins=OrderedSet([mm_1, view_11, permute_4]),
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            }
+          ), ReinterpretView(
+            StorageBox(
+              InputBuffer(name='arg8_1', layout=FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1024, 1]))
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1, 1024]),
+            origins=OrderedSet([mm_1, view_11, permute_4]),
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            }
+          )],
+          constant_args=(),
+          kwargs={},
+          output_view=None,
+          python_kernel_name=extern_kernels.mm,
+          cpp_kernel_name=at::mm_out,
+          ordered_kwargs_for_cpp_kernel=['out'],
+          op_overload=aten.mm.out,
+          arg_properties=[{'name': 'self', 'type': Tensor, 'default_value': None}, {'name': 'mat2', 'type': Tensor, 'default_value': None}],
+          allarg_properties={'self': {'type': Tensor, 'default_value': None}, 'mat2': {'type': Tensor, 'default_value': None}, 'out': {'type': Tensor, 'default_value': None}},
+          kwarg_properties=None,
+          unbacked_bindings={},
+          mutation_outputs=[],
+          origin_node=mm_1,
+          origins=OrderedSet([mm_1, view_11, permute_4]),
+          stack_traces = {,
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+              h = layer(h, mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+              h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+              queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+          ,
+          }
+        )
+      ),
+      FixedLayout('cuda:0', torch.bfloat16, size=[4, 32, 2048, 32], stride=[2097152, 32, 1024, 1]),
+      origins=OrderedSet([permute_7, view_16, view_12]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 151, in forward,
+          keys = keys.transpose(1, 2)  # (bs, n_local_heads, cache_len + seqlen, head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 143, in forward,
+          keys = keys.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+          queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+      ,
+      }
+    )
+  )
+  args[2]: TensorBox(
+    ReinterpretView(
+      StorageBox(
+        ExternKernelOut(
+          python_kernel_name='extern_kernels.mm',
+          name=buf24,
+          layout=FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+          inputs=[ReinterpretView(
+            StorageBox(
+              ComputedBuffer(name='buf21', layout=FixedLayout('cuda:0', torch.bfloat16, size=[4, 2048, 1024], stride=[2097152, 1024, 1]), data=Pointwise(
+                'cuda',
+                torch.bfloat16,
+                def inner_fn(index):
+                    i0, i1, i2 = index
+                    tmp0 = ops.load(arg5_1, i2 + 1024 * i1 + 2097152 * i0)
+                    tmp1 = ops.to_dtype(tmp0, torch.float32, src_dtype=torch.bfloat16)
+                    tmp2 = ops.load(buf20, i1 + 2048 * i0)
+                    tmp3 = ops.index_expr(1024, torch.float32)
+                    tmp4 = tmp2 / tmp3
+                    tmp5 = ops.constant(1e-05, torch.float32)
+                    tmp6 = tmp4 + tmp5
+                    tmp7 = ops.rsqrt(tmp6)
+                    tmp8 = tmp1 * tmp7
+                    tmp9 = ops.to_dtype(tmp8, torch.bfloat16, src_dtype=torch.float32)
+                    tmp10 = ops.load(arg6_1, i2)
+                    tmp11 = tmp9 * tmp10
+                    return tmp11
+                ,
+                ranges=[4, 2048, 1024],
+                origin_node=mul_1,
+                origins=OrderedSet([mul_1, convert_element_type_13, mul, conv...,
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                    return output * self.weight,
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                    return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+                ,
+                }
+              ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+            origins=OrderedSet([mm_2, view_13, permute_5]),
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            }
+          ), ReinterpretView(
+            StorageBox(
+              InputBuffer(name='arg9_1', layout=FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1024, 1]))
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1, 1024]),
+            origins=OrderedSet([mm_2, view_13, permute_5]),
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            }
+          )],
+          constant_args=(),
+          kwargs={},
+          output_view=None,
+          python_kernel_name=extern_kernels.mm,
+          cpp_kernel_name=at::mm_out,
+          ordered_kwargs_for_cpp_kernel=['out'],
+          op_overload=aten.mm.out,
+          arg_properties=[{'name': 'self', 'type': Tensor, 'default_value': None}, {'name': 'mat2', 'type': Tensor, 'default_value': None}],
+          allarg_properties={'self': {'type': Tensor, 'default_value': None}, 'mat2': {'type': Tensor, 'default_value': None}, 'out': {'type': Tensor, 'default_value': None}},
+          kwarg_properties=None,
+          unbacked_bindings={},
+          mutation_outputs=[],
+          origin_node=mm_2,
+          origins=OrderedSet([mm_2, view_13, permute_5]),
+          stack_traces = {,
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+              h = layer(h, mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+              h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+              queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+          ,
+          }
+        )
+      ),
+      FixedLayout('cuda:0', torch.bfloat16, size=[4, 32, 2048, 32], stride=[2097152, 32, 1024, 1]),
+      origins=OrderedSet([permute_8, view_17, view_14]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 152, in forward,
+          values = values.transpose(1, 2)  # (bs, n_local_heads, cache_len + seqlen, head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 144, in forward,
+          values = values.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+          queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+      ,
+      }
+    )
+  )
+  args[3]: Subgraph(name='sdpa_score0', graph_module=<lambda>(), graph=None)
+  args[4]: (2048, 2048, TensorBox(StorageBox(
+    ComputedBuffer(name='buf27', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16], stride=[16, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2 = index
+          tmp0 = ops.load(buf10, i2 + 16 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int32, src_dtype=torch.int64)
+          return tmp1
+      ,
+      ranges=[4, 1, 16],
+      origin_node=convert_element_type_3,
+      origins=OrderedSet([convert_element_type_3]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1139, in _create_sparse_block_from_block_mask,
+          partial_bm = _dense_to_ordered(partial_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 407, in _dense_to_ordered,
+          num_blocks_in_row.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf28', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16, 16], stride=[256, 256, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2, i3 = index
+          tmp0 = ops.load(buf7, i3 + 16 * i2 + 256 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int64, src_dtype=torch.int16)
+          tmp2 = ops.to_dtype(tmp1, torch.int32, src_dtype=torch.int64)
+          return tmp2
+      ,
+      ranges=[4, 1, 16, 16],
+      origin_node=convert_element_type_4,
+      origins=OrderedSet([convert_element_type_4, sort, convert_ele...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1139, in _create_sparse_block_from_block_mask,
+          partial_bm = _dense_to_ordered(partial_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 408, in _dense_to_ordered,
+          col_indices.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1139, in _create_sparse_block_from_block_mask,
+          partial_bm = _dense_to_ordered(partial_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 405, in _dense_to_ordered,
+          col_indices = torch.argsort(dense_mask, dim=-1, descending=True, stable=True),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1139, in _create_sparse_block_from_block_mask,
+          partial_bm = _dense_to_ordered(partial_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 403, in _dense_to_ordered,
+          dense_mask = dense_mask.to(dtype=torch.int32),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1276, in create_block_mask,
+          partial_block_mask, full_block_mask = _convert_mask_to_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1078, in _convert_mask_to_block_mask,
+          partial_blocks = partial_blocks.to(dtype=torch.int8),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1276, in create_block_mask,
+          partial_block_mask, full_block_mask = _convert_mask_to_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1077, in _convert_mask_to_block_mask,
+          partial_blocks = (mask_block_sum > 0) & (mask_block_sum < full_block_sum),
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf29', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16], stride=[16, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2 = index
+          tmp0 = ops.load(buf15, i2 + 16 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int32, src_dtype=torch.int64)
+          return tmp1
+      ,
+      ranges=[4, 1, 16],
+      origin_node=convert_element_type_6,
+      origins=OrderedSet([convert_element_type_6]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1141, in _create_sparse_block_from_block_mask,
+          full_bm: tuple[Tensor | None, Tensor | None] = _dense_to_ordered(full_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 407, in _dense_to_ordered,
+          num_blocks_in_row.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf30', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16, 16], stride=[256, 256, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2, i3 = index
+          tmp0 = ops.load(buf9, i3 + 16 * i2 + 256 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int64, src_dtype=torch.int16)
+          tmp2 = ops.to_dtype(tmp1, torch.int32, src_dtype=torch.int64)
+          return tmp2
+      ,
+      ranges=[4, 1, 16, 16],
+      origin_node=convert_element_type_7,
+      origins=OrderedSet([convert_element_type_7, sort_1, convert_e...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1141, in _create_sparse_block_from_block_mask,
+          full_bm: tuple[Tensor | None, Tensor | None] = _dense_to_ordered(full_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 408, in _dense_to_ordered,
+          col_indices.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1141, in _create_sparse_block_from_block_mask,
+          full_bm: tuple[Tensor | None, Tensor | None] = _dense_to_ordered(full_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 405, in _dense_to_ordered,
+          col_indices = torch.argsort(dense_mask, dim=-1, descending=True, stable=True),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1141, in _create_sparse_block_from_block_mask,
+          full_bm: tuple[Tensor | None, Tensor | None] = _dense_to_ordered(full_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 403, in _dense_to_ordered,
+          dense_mask = dense_mask.to(dtype=torch.int32),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1276, in create_block_mask,
+          partial_block_mask, full_block_mask = _convert_mask_to_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1079, in _convert_mask_to_block_mask,
+          full_blocks = full_blocks.to(dtype=torch.int8),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1276, in create_block_mask,
+          partial_block_mask, full_block_mask = _convert_mask_to_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1076, in _convert_mask_to_block_mask,
+          full_blocks = mask_block_sum == full_block_sum,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf31', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16], stride=[16, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2 = index
+          tmp0 = ops.load(buf25, i2 + 16 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int32, src_dtype=torch.int64)
+          return tmp1
+      ,
+      ranges=[4, 1, 16],
+      origin_node=convert_element_type_8,
+      origins=OrderedSet([convert_element_type_8]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 407, in _dense_to_ordered,
+          num_blocks_in_row.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf32', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16, 16], stride=[256, 256, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2, i3 = index
+          tmp0 = ops.load(buf14, i3 + 16 * i2 + 256 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int64, src_dtype=torch.int16)
+          tmp2 = ops.to_dtype(tmp1, torch.int32, src_dtype=torch.int64)
+          return tmp2
+      ,
+      ranges=[4, 1, 16, 16],
+      origin_node=clone_6,
+      origins=OrderedSet([clone_6, convert_element_type_9, sort_2, ...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 408, in _dense_to_ordered,
+          col_indices.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 405, in _dense_to_ordered,
+          col_indices = torch.argsort(dense_mask, dim=-1, descending=True, stable=True),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 413, in _transpose_ordered,
+          dense = _ordered_to_dense(num_blocks_in_row, col_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 398, in _ordered_to_dense,
+          out = create_dense_batched(num_blocks_in_row, col_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/apis.py", line 220, in wrapped,
+          return vmap_impl(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 316, in vmap_impl,
+          return _flat_vmap(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 507, in _flat_vmap,
+          batched_outputs = func(*batched_inputs, **kwargs),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/apis.py", line 220, in wrapped,
+          return vmap_impl(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 316, in vmap_impl,
+          return _flat_vmap(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 507, in _flat_vmap,
+          batched_outputs = func(*batched_inputs, **kwargs),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 392, in create_dense_one,
+          return dense_mask[:, :num_cols].contiguous(),
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf33', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16], stride=[16, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2 = index
+          tmp0 = ops.load(buf26, i2 + 16 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int32, src_dtype=torch.int64)
+          return tmp1
+      ,
+      ranges=[4, 1, 16],
+      origin_node=convert_element_type_10,
+      origins=OrderedSet([convert_element_type_10]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 407, in _dense_to_ordered,
+          num_blocks_in_row.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf34', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16, 16], stride=[256, 256, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2, i3 = index
+          tmp0 = ops.load(buf19, i3 + 16 * i2 + 256 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int64, src_dtype=torch.int16)
+          tmp2 = ops.to_dtype(tmp1, torch.int32, src_dtype=torch.int64)
+          return tmp2
+      ,
+      ranges=[4, 1, 16, 16],
+      origin_node=clone_9,
+      origins=OrderedSet([clone_9, convert_element_type_11, sort_3,...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 408, in _dense_to_ordered,
+          col_indices.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 405, in _dense_to_ordered,
+          col_indices = torch.argsort(dense_mask, dim=-1, descending=True, stable=True),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 413, in _transpose_ordered,
+          dense = _ordered_to_dense(num_blocks_in_row, col_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 398, in _ordered_to_dense,
+          out = create_dense_batched(num_blocks_in_row, col_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/apis.py", line 220, in wrapped,
+          return vmap_impl(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 316, in vmap_impl,
+          return _flat_vmap(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 507, in _flat_vmap,
+          batched_outputs = func(*batched_inputs, **kwargs),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/apis.py", line 220, in wrapped,
+          return vmap_impl(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 316, in vmap_impl,
+          return _flat_vmap(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 507, in _flat_vmap,
+          batched_outputs = func(*batched_inputs, **kwargs),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 392, in create_dense_one,
+          return dense_mask[:, :num_cols].contiguous(),
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), 128, 128, Subgraph(name='sdpa_mask0', graph_module=<lambda>(), graph=None))
+  args[5]: 0.17677669529663687
+  args[6]: {'BLOCK_M': 32, 'BLOCK_N': 32, 'BLOCK_M1': 32, 'BLOCK_N1': 32, 'BLOCK_M2': 32, 'BLOCK_N2': 32, 'BACKEND': 'AUTO', 'PRESCALE_QK': False, 'ROWS_GUARANTEED_SAFE': False, 'BLOCKS_ARE_CONTIGUOUS': False, 'WRITE_DQ': True, 'OUTPUT_LOGSUMEXP': False, 'OUTPUT_MAX': False}
+  args[7]: (TensorBox(StorageBox(
+    ComputedBuffer(name='buf35', layout=FixedLayout('cuda:0', torch.float32, size=[32, 4095], stride=[4096, 1]), data=Pointwise(
+      'cuda',
+      torch.float32,
+      def inner_fn(index):
+          i0, i1 = index
+          tmp0 = ops.index_expr(-2047 + i1, torch.int64)
+          tmp1 = ops.to_dtype(tmp0, torch.float32, src_dtype=torch.int64)
+          tmp2 = ops.load(arg12_1, i0)
+          tmp3 = ops.exp(tmp2)
+          tmp4 = ops.load(arg12_1, i0)
+          tmp5 = -tmp4
+          tmp6 = ops.exp(tmp5)
+          tmp7 = tmp3 - tmp6
+          tmp8 = ops.to_dtype(tmp7, torch.float32, src_dtype=torch.bfloat16)
+          tmp9 = tmp1 - tmp8
+          tmp10 = ops.abs(tmp9)
+          tmp11 = ops.constant(1e-05, torch.float32)
+          tmp12 = tmp10 + tmp11
+          tmp13 = ops.load(arg13_1, i0)
+          tmp14 = ops.to_dtype(tmp13, torch.float32, src_dtype=torch.bfloat16)
+          tmp15 = tmp12 ** tmp14
+          tmp16 = -tmp15
+          tmp17 = ops.load(arg11_1, i0)
+          tmp18 = ops.exp(tmp17)
+          tmp19 = ops.to_dtype(tmp18, torch.float32, src_dtype=torch.bfloat16)
+          tmp20 = tmp16 * tmp19
+          return tmp20
+      ,
+      ranges=[32, 4095],
+      origin_node=mul_3,
+      origins=OrderedSet([mul_3, neg_1, pow_2, add_2, abs_1, sub_2,...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 155, in forward,
+          prior = self.prior(seqlen) if self.local_positional_encoding else global_prior,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 83, in forward,
+          return -((b.abs() + self.eps) ** self.theta_beta) * self.theta_alpha.exp(),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 155, in forward,
+          prior = self.prior(seqlen) if self.local_positional_encoding else global_prior,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 82, in forward,
+          b = positions - (self.theta_mu.exp() - (-self.theta_mu).exp()),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 155, in forward,
+          prior = self.prior(seqlen) if self.local_positional_encoding else global_prior,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 81, in forward,
+          positions = torch.arange(1-seq_len, seq_len, device=self.theta_alpha.device).float(),
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf36', layout=FixedLayout('cuda:0', torch.float32, size=[4, 32, 2048], stride=[65536, 2048, 1]), data=Pointwise(
+      'cuda',
+      torch.float32,
+      def inner_fn(index):
+          i0, i1, i2 = index
+          tmp0 = ops.load(arg3_1, i2 + 2048 * i0)
+          tmp1 = ops.load(buf3, i2 + 2048 * i0)
+          tmp2 = tmp0 - tmp1
+          tmp3 = ops.constant(1, torch.int64)
+          tmp4 = tmp2 + tmp3
+          tmp5 = ops.to_dtype(tmp4, torch.float32, src_dtype=torch.int64)
+          tmp6 = ops.log(tmp5)
+          tmp7 = ops.load(arg10_1, i1)
+          tmp8 = ops.to_dtype(tmp7, torch.float32, src_dtype=torch.bfloat16)
+          tmp9 = tmp6 * tmp8
+          return tmp9
+      ,
+      ranges=[4, 32, 2048],
+      origin_node=mul_2,
+      origins=OrderedSet([mul_2, unsqueeze, log, add, sub]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 154, in forward,
+          ssmax_mul = section_log_len * self.seq_scale,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 259, in torch_dynamo_resume_in_forward_at_255,
+          section_log_len = positions.log().unsqueeze(1),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 258, in torch_dynamo_resume_in_forward_at_255,
+          positions = positions - correction + 1,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )))
+  args[8]: (TensorBox(StorageBox(
+    InputBuffer(name='arg4_1', layout=FixedLayout('cuda:0', torch.int64, size=[4, 2048], stride=[2048, 1]))
+  )),)AssertionError: convert FlexibleLayout to FixedLayout first
+  target: flex_attention
+  args[0]: TensorBox(
+    ReinterpretView(
+      StorageBox(
+        ExternKernelOut(
+          python_kernel_name='extern_kernels.mm',
+          name=buf22,
+          layout=FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+          inputs=[ReinterpretView(
+            StorageBox(
+              ComputedBuffer(name='buf21', layout=FixedLayout('cuda:0', torch.bfloat16, size=[4, 2048, 1024], stride=[2097152, 1024, 1]), data=Pointwise(
+                'cuda',
+                torch.bfloat16,
+                def inner_fn(index):
+                    i0, i1, i2 = index
+                    tmp0 = ops.load(arg5_1, i2 + 1024 * i1 + 2097152 * i0)
+                    tmp1 = ops.to_dtype(tmp0, torch.float32, src_dtype=torch.bfloat16)
+                    tmp2 = ops.load(buf20, i1 + 2048 * i0)
+                    tmp3 = ops.index_expr(1024, torch.float32)
+                    tmp4 = tmp2 / tmp3
+                    tmp5 = ops.constant(1e-05, torch.float32)
+                    tmp6 = tmp4 + tmp5
+                    tmp7 = ops.rsqrt(tmp6)
+                    tmp8 = tmp1 * tmp7
+                    tmp9 = ops.to_dtype(tmp8, torch.bfloat16, src_dtype=torch.float32)
+                    tmp10 = ops.load(arg6_1, i2)
+                    tmp11 = tmp9 * tmp10
+                    return tmp11
+                ,
+                ranges=[4, 2048, 1024],
+                origin_node=mul_1,
+                origins=OrderedSet([mul_1, convert_element_type_13, mul, conv...,
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                    return output * self.weight,
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                    return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+                ,
+                }
+              ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+            origins=OrderedSet([mm, view_9, mul_1, convert_element_type_1...,
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                return output * self.weight,
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                output = self._norm(x.float()).type_as(x),
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                output = self._norm(x.float()).type_as(x),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+            ,
+            }
+          ), ReinterpretView(
+            StorageBox(
+              InputBuffer(name='arg7_1', layout=FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1024, 1]))
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1, 1024]),
+            origins=OrderedSet([mm, view_9, mul_1, convert_element_type_1...,
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                return output * self.weight,
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                output = self._norm(x.float()).type_as(x),
+            ,
+            },
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                output = self._norm(x.float()).type_as(x),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+            ,
+            }
+          )],
+          constant_args=(),
+          kwargs={},
+          output_view=None,
+          python_kernel_name=extern_kernels.mm,
+          cpp_kernel_name=at::mm_out,
+          ordered_kwargs_for_cpp_kernel=['out'],
+          op_overload=aten.mm.out,
+          arg_properties=[{'name': 'self', 'type': Tensor, 'default_value': None}, {'name': 'mat2', 'type': Tensor, 'default_value': None}],
+          allarg_properties={'self': {'type': Tensor, 'default_value': None}, 'mat2': {'type': Tensor, 'default_value': None}, 'out': {'type': Tensor, 'default_value': None}},
+          kwarg_properties=None,
+          unbacked_bindings={},
+          mutation_outputs=[],
+          origin_node=mm,
+          origins=OrderedSet([mm, view_9, mul_1, convert_element_type_1...,
+          stack_traces = {,
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+              h = layer(h, mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+              h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+              queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+          ,
+          }
+        )
+      ),
+      FixedLayout('cuda:0', torch.bfloat16, size=[4, 32, 2048, 32], stride=[2097152, 32, 1024, 1]),
+      origins=OrderedSet([permute_6, view_15, view_10]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 150, in forward,
+          queries = queries.transpose(1, 2)  # (bs, n_local_heads, seqlen, head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 142, in forward,
+          queries = queries.view(bsz, seqlen, self.n_local_heads, self.head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+          queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+      ,
+      }
+    )
+  )
+  args[1]: TensorBox(
+    ReinterpretView(
+      StorageBox(
+        ExternKernelOut(
+          python_kernel_name='extern_kernels.mm',
+          name=buf23,
+          layout=FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+          inputs=[ReinterpretView(
+            StorageBox(
+              ComputedBuffer(name='buf21', layout=FixedLayout('cuda:0', torch.bfloat16, size=[4, 2048, 1024], stride=[2097152, 1024, 1]), data=Pointwise(
+                'cuda',
+                torch.bfloat16,
+                def inner_fn(index):
+                    i0, i1, i2 = index
+                    tmp0 = ops.load(arg5_1, i2 + 1024 * i1 + 2097152 * i0)
+                    tmp1 = ops.to_dtype(tmp0, torch.float32, src_dtype=torch.bfloat16)
+                    tmp2 = ops.load(buf20, i1 + 2048 * i0)
+                    tmp3 = ops.index_expr(1024, torch.float32)
+                    tmp4 = tmp2 / tmp3
+                    tmp5 = ops.constant(1e-05, torch.float32)
+                    tmp6 = tmp4 + tmp5
+                    tmp7 = ops.rsqrt(tmp6)
+                    tmp8 = tmp1 * tmp7
+                    tmp9 = ops.to_dtype(tmp8, torch.bfloat16, src_dtype=torch.float32)
+                    tmp10 = ops.load(arg6_1, i2)
+                    tmp11 = tmp9 * tmp10
+                    return tmp11
+                ,
+                ranges=[4, 2048, 1024],
+                origin_node=mul_1,
+                origins=OrderedSet([mul_1, convert_element_type_13, mul, conv...,
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                    return output * self.weight,
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                    return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+                ,
+                }
+              ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+            origins=OrderedSet([mm_1, view_11, permute_4]),
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            }
+          ), ReinterpretView(
+            StorageBox(
+              InputBuffer(name='arg8_1', layout=FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1024, 1]))
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1, 1024]),
+            origins=OrderedSet([mm_1, view_11, permute_4]),
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            }
+          )],
+          constant_args=(),
+          kwargs={},
+          output_view=None,
+          python_kernel_name=extern_kernels.mm,
+          cpp_kernel_name=at::mm_out,
+          ordered_kwargs_for_cpp_kernel=['out'],
+          op_overload=aten.mm.out,
+          arg_properties=[{'name': 'self', 'type': Tensor, 'default_value': None}, {'name': 'mat2', 'type': Tensor, 'default_value': None}],
+          allarg_properties={'self': {'type': Tensor, 'default_value': None}, 'mat2': {'type': Tensor, 'default_value': None}, 'out': {'type': Tensor, 'default_value': None}},
+          kwarg_properties=None,
+          unbacked_bindings={},
+          mutation_outputs=[],
+          origin_node=mm_1,
+          origins=OrderedSet([mm_1, view_11, permute_4]),
+          stack_traces = {,
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+              h = layer(h, mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+              h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+              queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+          ,
+          }
+        )
+      ),
+      FixedLayout('cuda:0', torch.bfloat16, size=[4, 32, 2048, 32], stride=[2097152, 32, 1024, 1]),
+      origins=OrderedSet([permute_7, view_16, view_12]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 151, in forward,
+          keys = keys.transpose(1, 2)  # (bs, n_local_heads, cache_len + seqlen, head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 143, in forward,
+          keys = keys.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+          queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+      ,
+      }
+    )
+  )
+  args[2]: TensorBox(
+    ReinterpretView(
+      StorageBox(
+        ExternKernelOut(
+          python_kernel_name='extern_kernels.mm',
+          name=buf24,
+          layout=FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+          inputs=[ReinterpretView(
+            StorageBox(
+              ComputedBuffer(name='buf21', layout=FixedLayout('cuda:0', torch.bfloat16, size=[4, 2048, 1024], stride=[2097152, 1024, 1]), data=Pointwise(
+                'cuda',
+                torch.bfloat16,
+                def inner_fn(index):
+                    i0, i1, i2 = index
+                    tmp0 = ops.load(arg5_1, i2 + 1024 * i1 + 2097152 * i0)
+                    tmp1 = ops.to_dtype(tmp0, torch.float32, src_dtype=torch.bfloat16)
+                    tmp2 = ops.load(buf20, i1 + 2048 * i0)
+                    tmp3 = ops.index_expr(1024, torch.float32)
+                    tmp4 = tmp2 / tmp3
+                    tmp5 = ops.constant(1e-05, torch.float32)
+                    tmp6 = tmp4 + tmp5
+                    tmp7 = ops.rsqrt(tmp6)
+                    tmp8 = tmp1 * tmp7
+                    tmp9 = ops.to_dtype(tmp8, torch.bfloat16, src_dtype=torch.float32)
+                    tmp10 = ops.load(arg6_1, i2)
+                    tmp11 = tmp9 * tmp10
+                    return tmp11
+                ,
+                ranges=[4, 2048, 1024],
+                origin_node=mul_1,
+                origins=OrderedSet([mul_1, convert_element_type_13, mul, conv...,
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 47, in forward,
+                    return output * self.weight,
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                ,
+                },
+                stack_traces = {,
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                    h = layer(h, mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 46, in forward,
+                    output = self._norm(x.float()).type_as(x),
+                  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 43, in _norm,
+                    return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps),
+                ,
+                }
+              ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[8192, 1024], stride=[1024, 1]),
+            origins=OrderedSet([mm_2, view_13, permute_5]),
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            }
+          ), ReinterpretView(
+            StorageBox(
+              InputBuffer(name='arg9_1', layout=FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1024, 1]))
+            ),
+            FixedLayout('cuda:0', torch.bfloat16, size=[1024, 1024], stride=[1, 1024]),
+            origins=OrderedSet([mm_2, view_13, permute_5]),
+            stack_traces = {,
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+                h = layer(h, mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+                h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+              File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+                queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+            ,
+            }
+          )],
+          constant_args=(),
+          kwargs={},
+          output_view=None,
+          python_kernel_name=extern_kernels.mm,
+          cpp_kernel_name=at::mm_out,
+          ordered_kwargs_for_cpp_kernel=['out'],
+          op_overload=aten.mm.out,
+          arg_properties=[{'name': 'self', 'type': Tensor, 'default_value': None}, {'name': 'mat2', 'type': Tensor, 'default_value': None}],
+          allarg_properties={'self': {'type': Tensor, 'default_value': None}, 'mat2': {'type': Tensor, 'default_value': None}, 'out': {'type': Tensor, 'default_value': None}},
+          kwarg_properties=None,
+          unbacked_bindings={},
+          mutation_outputs=[],
+          origin_node=mm_2,
+          origins=OrderedSet([mm_2, view_13, permute_5]),
+          stack_traces = {,
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+              h = layer(h, mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+              h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+            File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+              queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+          ,
+          }
+        )
+      ),
+      FixedLayout('cuda:0', torch.bfloat16, size=[4, 32, 2048, 32], stride=[2097152, 32, 1024, 1]),
+      origins=OrderedSet([permute_8, view_17, view_14]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 152, in forward,
+          values = values.transpose(1, 2)  # (bs, n_local_heads, cache_len + seqlen, head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 144, in forward,
+          values = values.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 140, in forward,
+          queries, keys, values = self.wq(x), self.wk(x), self.wv(x),
+      ,
+      }
+    )
+  )
+  args[3]: Subgraph(name='sdpa_score0', graph_module=<lambda>(), graph=None)
+  args[4]: (2048, 2048, TensorBox(StorageBox(
+    ComputedBuffer(name='buf27', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16], stride=[16, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2 = index
+          tmp0 = ops.load(buf10, i2 + 16 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int32, src_dtype=torch.int64)
+          return tmp1
+      ,
+      ranges=[4, 1, 16],
+      origin_node=convert_element_type_3,
+      origins=OrderedSet([convert_element_type_3]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1139, in _create_sparse_block_from_block_mask,
+          partial_bm = _dense_to_ordered(partial_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 407, in _dense_to_ordered,
+          num_blocks_in_row.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf28', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16, 16], stride=[256, 256, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2, i3 = index
+          tmp0 = ops.load(buf7, i3 + 16 * i2 + 256 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int64, src_dtype=torch.int16)
+          tmp2 = ops.to_dtype(tmp1, torch.int32, src_dtype=torch.int64)
+          return tmp2
+      ,
+      ranges=[4, 1, 16, 16],
+      origin_node=convert_element_type_4,
+      origins=OrderedSet([convert_element_type_4, sort, convert_ele...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1139, in _create_sparse_block_from_block_mask,
+          partial_bm = _dense_to_ordered(partial_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 408, in _dense_to_ordered,
+          col_indices.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1139, in _create_sparse_block_from_block_mask,
+          partial_bm = _dense_to_ordered(partial_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 405, in _dense_to_ordered,
+          col_indices = torch.argsort(dense_mask, dim=-1, descending=True, stable=True),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1139, in _create_sparse_block_from_block_mask,
+          partial_bm = _dense_to_ordered(partial_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 403, in _dense_to_ordered,
+          dense_mask = dense_mask.to(dtype=torch.int32),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1276, in create_block_mask,
+          partial_block_mask, full_block_mask = _convert_mask_to_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1078, in _convert_mask_to_block_mask,
+          partial_blocks = partial_blocks.to(dtype=torch.int8),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1276, in create_block_mask,
+          partial_block_mask, full_block_mask = _convert_mask_to_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1077, in _convert_mask_to_block_mask,
+          partial_blocks = (mask_block_sum > 0) & (mask_block_sum < full_block_sum),
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf29', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16], stride=[16, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2 = index
+          tmp0 = ops.load(buf15, i2 + 16 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int32, src_dtype=torch.int64)
+          return tmp1
+      ,
+      ranges=[4, 1, 16],
+      origin_node=convert_element_type_6,
+      origins=OrderedSet([convert_element_type_6]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1141, in _create_sparse_block_from_block_mask,
+          full_bm: tuple[Tensor | None, Tensor | None] = _dense_to_ordered(full_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 407, in _dense_to_ordered,
+          num_blocks_in_row.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf30', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16, 16], stride=[256, 256, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2, i3 = index
+          tmp0 = ops.load(buf9, i3 + 16 * i2 + 256 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int64, src_dtype=torch.int16)
+          tmp2 = ops.to_dtype(tmp1, torch.int32, src_dtype=torch.int64)
+          return tmp2
+      ,
+      ranges=[4, 1, 16, 16],
+      origin_node=convert_element_type_7,
+      origins=OrderedSet([convert_element_type_7, sort_1, convert_e...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1141, in _create_sparse_block_from_block_mask,
+          full_bm: tuple[Tensor | None, Tensor | None] = _dense_to_ordered(full_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 408, in _dense_to_ordered,
+          col_indices.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1141, in _create_sparse_block_from_block_mask,
+          full_bm: tuple[Tensor | None, Tensor | None] = _dense_to_ordered(full_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 405, in _dense_to_ordered,
+          col_indices = torch.argsort(dense_mask, dim=-1, descending=True, stable=True),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1141, in _create_sparse_block_from_block_mask,
+          full_bm: tuple[Tensor | None, Tensor | None] = _dense_to_ordered(full_blocks),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 403, in _dense_to_ordered,
+          dense_mask = dense_mask.to(dtype=torch.int32),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1276, in create_block_mask,
+          partial_block_mask, full_block_mask = _convert_mask_to_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1079, in _convert_mask_to_block_mask,
+          full_blocks = full_blocks.to(dtype=torch.int8),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1276, in create_block_mask,
+          partial_block_mask, full_block_mask = _convert_mask_to_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1076, in _convert_mask_to_block_mask,
+          full_blocks = mask_block_sum == full_block_sum,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf31', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16], stride=[16, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2 = index
+          tmp0 = ops.load(buf25, i2 + 16 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int32, src_dtype=torch.int64)
+          return tmp1
+      ,
+      ranges=[4, 1, 16],
+      origin_node=convert_element_type_8,
+      origins=OrderedSet([convert_element_type_8]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 407, in _dense_to_ordered,
+          num_blocks_in_row.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf32', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16, 16], stride=[256, 256, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2, i3 = index
+          tmp0 = ops.load(buf14, i3 + 16 * i2 + 256 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int64, src_dtype=torch.int16)
+          tmp2 = ops.to_dtype(tmp1, torch.int32, src_dtype=torch.int64)
+          return tmp2
+      ,
+      ranges=[4, 1, 16, 16],
+      origin_node=clone_6,
+      origins=OrderedSet([clone_6, convert_element_type_9, sort_2, ...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 408, in _dense_to_ordered,
+          col_indices.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 405, in _dense_to_ordered,
+          col_indices = torch.argsort(dense_mask, dim=-1, descending=True, stable=True),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 650, in from_kv_blocks,
+          q_num_blocks, q_indices = _transpose_ordered(kv_num_blocks, kv_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 413, in _transpose_ordered,
+          dense = _ordered_to_dense(num_blocks_in_row, col_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 398, in _ordered_to_dense,
+          out = create_dense_batched(num_blocks_in_row, col_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/apis.py", line 220, in wrapped,
+          return vmap_impl(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 316, in vmap_impl,
+          return _flat_vmap(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 507, in _flat_vmap,
+          batched_outputs = func(*batched_inputs, **kwargs),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/apis.py", line 220, in wrapped,
+          return vmap_impl(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 316, in vmap_impl,
+          return _flat_vmap(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 507, in _flat_vmap,
+          batched_outputs = func(*batched_inputs, **kwargs),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 392, in create_dense_one,
+          return dense_mask[:, :num_cols].contiguous(),
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf33', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16], stride=[16, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2 = index
+          tmp0 = ops.load(buf26, i2 + 16 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int32, src_dtype=torch.int64)
+          return tmp1
+      ,
+      ranges=[4, 1, 16],
+      origin_node=convert_element_type_10,
+      origins=OrderedSet([convert_element_type_10]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 407, in _dense_to_ordered,
+          num_blocks_in_row.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf34', layout=FlexibleLayout('cuda:0', torch.int32, size=[4, 1, 16, 16], stride=[256, 256, 16, 1]), data=Pointwise(
+      'cuda',
+      torch.int32,
+      def inner_fn(index):
+          i0, _, i2, i3 = index
+          tmp0 = ops.load(buf19, i3 + 16 * i2 + 256 * i0)
+          tmp1 = ops.to_dtype(tmp0, torch.int64, src_dtype=torch.int16)
+          tmp2 = ops.to_dtype(tmp1, torch.int32, src_dtype=torch.int64)
+          return tmp2
+      ,
+      ranges=[4, 1, 16, 16],
+      origin_node=clone_9,
+      origins=OrderedSet([clone_9, convert_element_type_11, sort_3,...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 408, in _dense_to_ordered,
+          col_indices.to(torch.int32, memory_format=torch.contiguous_format),,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 405, in _dense_to_ordered,
+          col_indices = torch.argsort(dense_mask, dim=-1, descending=True, stable=True),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 414, in _transpose_ordered,
+          return _dense_to_ordered(dense.transpose(-2, -1)),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 268, in torch_dynamo_resume_in_forward_at_255,
+          mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=seqlen, device=tokens.device, BLOCK_SIZE=128),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1282, in create_block_mask,
+          block_mask = _create_sparse_block_from_block_mask(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1145, in _create_sparse_block_from_block_mask,
+          return BlockMask.from_kv_blocks(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 654, in from_kv_blocks,
+          full_q_num_blocks, full_q_indices = _transpose_ordered(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 413, in _transpose_ordered,
+          dense = _ordered_to_dense(num_blocks_in_row, col_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 398, in _ordered_to_dense,
+          out = create_dense_batched(num_blocks_in_row, col_indices),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/apis.py", line 220, in wrapped,
+          return vmap_impl(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 316, in vmap_impl,
+          return _flat_vmap(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 507, in _flat_vmap,
+          batched_outputs = func(*batched_inputs, **kwargs),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/apis.py", line 220, in wrapped,
+          return vmap_impl(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 316, in vmap_impl,
+          return _flat_vmap(,
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/_functorch/vmap.py", line 507, in _flat_vmap,
+          batched_outputs = func(*batched_inputs, **kwargs),
+        File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 392, in create_dense_one,
+          return dense_mask[:, :num_cols].contiguous(),
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), 128, 128, Subgraph(name='sdpa_mask0', graph_module=<lambda>(), graph=None))
+  args[5]: 0.17677669529663687
+  args[6]: {'BLOCK_M': 32, 'BLOCK_N': 32, 'BLOCK_M1': 32, 'BLOCK_N1': 32, 'BLOCK_M2': 32, 'BLOCK_N2': 32, 'BACKEND': 'AUTO', 'PRESCALE_QK': False, 'ROWS_GUARANTEED_SAFE': False, 'BLOCKS_ARE_CONTIGUOUS': False, 'WRITE_DQ': True, 'OUTPUT_LOGSUMEXP': False, 'OUTPUT_MAX': False}
+  args[7]: (TensorBox(StorageBox(
+    ComputedBuffer(name='buf35', layout=FixedLayout('cuda:0', torch.float32, size=[32, 4095], stride=[4096, 1]), data=Pointwise(
+      'cuda',
+      torch.float32,
+      def inner_fn(index):
+          i0, i1 = index
+          tmp0 = ops.index_expr(-2047 + i1, torch.int64)
+          tmp1 = ops.to_dtype(tmp0, torch.float32, src_dtype=torch.int64)
+          tmp2 = ops.load(arg12_1, i0)
+          tmp3 = ops.exp(tmp2)
+          tmp4 = ops.load(arg12_1, i0)
+          tmp5 = -tmp4
+          tmp6 = ops.exp(tmp5)
+          tmp7 = tmp3 - tmp6
+          tmp8 = ops.to_dtype(tmp7, torch.float32, src_dtype=torch.bfloat16)
+          tmp9 = tmp1 - tmp8
+          tmp10 = ops.abs(tmp9)
+          tmp11 = ops.constant(1e-05, torch.float32)
+          tmp12 = tmp10 + tmp11
+          tmp13 = ops.load(arg13_1, i0)
+          tmp14 = ops.to_dtype(tmp13, torch.float32, src_dtype=torch.bfloat16)
+          tmp15 = tmp12 ** tmp14
+          tmp16 = -tmp15
+          tmp17 = ops.load(arg11_1, i0)
+          tmp18 = ops.exp(tmp17)
+          tmp19 = ops.to_dtype(tmp18, torch.float32, src_dtype=torch.bfloat16)
+          tmp20 = tmp16 * tmp19
+          return tmp20
+      ,
+      ranges=[32, 4095],
+      origin_node=mul_3,
+      origins=OrderedSet([mul_3, neg_1, pow_2, add_2, abs_1, sub_2,...,
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 155, in forward,
+          prior = self.prior(seqlen) if self.local_positional_encoding else global_prior,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 83, in forward,
+          return -((b.abs() + self.eps) ** self.theta_beta) * self.theta_alpha.exp(),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 155, in forward,
+          prior = self.prior(seqlen) if self.local_positional_encoding else global_prior,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 82, in forward,
+          b = positions - (self.theta_mu.exp() - (-self.theta_mu).exp()),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 155, in forward,
+          prior = self.prior(seqlen) if self.local_positional_encoding else global_prior,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 81, in forward,
+          positions = torch.arange(1-seq_len, seq_len, device=self.theta_alpha.device).float(),
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )), TensorBox(StorageBox(
+    ComputedBuffer(name='buf36', layout=FixedLayout('cuda:0', torch.float32, size=[4, 32, 2048], stride=[65536, 2048, 1]), data=Pointwise(
+      'cuda',
+      torch.float32,
+      def inner_fn(index):
+          i0, i1, i2 = index
+          tmp0 = ops.load(arg3_1, i2 + 2048 * i0)
+          tmp1 = ops.load(buf3, i2 + 2048 * i0)
+          tmp2 = tmp0 - tmp1
+          tmp3 = ops.constant(1, torch.int64)
+          tmp4 = tmp2 + tmp3
+          tmp5 = ops.to_dtype(tmp4, torch.float32, src_dtype=torch.int64)
+          tmp6 = ops.log(tmp5)
+          tmp7 = ops.load(arg10_1, i1)
+          tmp8 = ops.to_dtype(tmp7, torch.float32, src_dtype=torch.bfloat16)
+          tmp9 = tmp6 * tmp8
+          return tmp9
+      ,
+      ranges=[4, 32, 2048],
+      origin_node=mul_2,
+      origins=OrderedSet([mul_2, unsqueeze, log, add, sub]),
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255,
+          h = layer(h, mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward,
+          h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len),
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 154, in forward,
+          ssmax_mul = section_log_len * self.seq_scale,
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 259, in torch_dynamo_resume_in_forward_at_255,
+          section_log_len = positions.log().unsqueeze(1),
+      ,
+      },
+      stack_traces = {,
+        File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 258, in torch_dynamo_resume_in_forward_at_255,
+          positions = positions - correction + 1,
+      ,
+      }
+    ), _split_size=None, _original_inner_fn=None, _original_ranges=None, _original_reduction_ranges=None)
+  )))
+  args[8]: (TensorBox(StorageBox(
+    InputBuffer(name='arg4_1', layout=FixedLayout('cuda:0', torch.int64, size=[4, 2048], stride=[2048, 1]))
+  )),)
+Found from : 
+   File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 276, in torch_dynamo_resume_in_forward_at_255
+    h = layer(h, mask, global_prior, section_log_len)
+  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 221, in forward
+    h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len)
+  File "/mnt/B-SSD/yasmin/BAM/models/bam_ssmax.py", line 160, in forward
+    output = flex_attention(queries, keys, values, score_mod=score_mod, block_mask=mask,
+  File "/mnt/B-SSD/yasmin/miniconda3/envs/cabam_env/lib/python3.11/site-packages/torch/nn/attention/flex_attention.py", line 1690, in flex_attention
+    out, lse, max_scores = flex_attention_hop(
+
+
+Set TORCHDYNAMO_VERBOSE=1 for the internal stack trace (please do this especially if you're reporting a bug to PyTorch). For even more developer context, set TORCH_LOGS="+dynamo"
+

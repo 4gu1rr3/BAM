@@ -1,17 +1,26 @@
+import argparse
+import os
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--gpu", type=int, default=0, help="índice da GPU a usar")
+parser.add_argument("--models", nargs="+", default=["bam_wo_fa", "cabam_wo_fa", "dape"],
+                    choices=["bam", "cabam", "dape", "bam_wo_fa", "cabam_wo_fa"],
+                    help="modelos a benchmarkar (ex: --models bam cabam)")
+parser.add_argument("--seq_len", type=int, default=4096)
+parser.add_argument("--batch_size", type=int, default=4)
+parser.add_argument("--n_warmup", type=int, default=5)
+parser.add_argument("--n_runs", type=int, default=20)
+args = parser.parse_args()
+os.environ["CUDA_VISIBLE_DEVICES"] = str(args.gpu)
+
 import time
 import torch
-from torch.nn.attention.flex_attention import flex_attention
 
-from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
-from models.cabam    import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
-from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
-
-# Hiperparâmetros ────────────────────────────────────────────────────────────────────────
-BATCH_SIZE   = 4
-SEQ_LEN      = 512
-N_WARMUP     = 5
-N_RUNS       = 20
-DEVICE       = "cuda"
+DEVICE     = "cuda:0"
+SEQ_LEN    = args.seq_len
+BATCH_SIZE = args.batch_size
+N_WARMUP   = args.n_warmup
+N_RUNS     = args.n_runs
 
 MODEL_KWARGS = dict(
     dim=1024,
@@ -22,36 +31,29 @@ MODEL_KWARGS = dict(
     max_batch_size=BATCH_SIZE,
 )
 
-# Funções auxiliares ────────────────────────────────────────────────────────────────────────
+# ── Helpers ───────────────────────────────────────────────────────────────────
+
 def make_inputs(batch_size, seq_len, vocab_size, device):
-    """Cria tokens e seq_codes aleatórios — não precisa de dataset real."""
     tokens    = torch.randint(0, vocab_size, (batch_size, seq_len), device=device)
     seq_codes = torch.zeros(batch_size, seq_len, dtype=torch.long, device=device)
     return tokens, seq_codes
 
 def measure(model, tokens, seq_codes, n_warmup, n_runs):
-    """Mede latência (ms) e pico de VRAM (MB) do forward pass."""
     model.eval()
     torch.cuda.reset_peak_memory_stats(DEVICE)
     torch.cuda.synchronize()
-    
     with torch.no_grad():
         for _ in range(n_warmup):
             _ = model(tokens, seq_codes=seq_codes)
         torch.cuda.reset_peak_memory_stats(DEVICE)
         torch.cuda.synchronize()
-
-        # Medição
-        torch.cuda.reset_peak_memory_stats(DEVICE)
         t0 = time.perf_counter()
         for _ in range(n_runs):
             _ = model(tokens, seq_codes=seq_codes)
         torch.cuda.synchronize()
         t1 = time.perf_counter()
-
-    elapsed_ms  = (t1 - t0) / n_runs * 1000          # ms por forward pass
-    peak_mb     = torch.cuda.max_memory_allocated(DEVICE) / 1024**2  # MB
-
+    elapsed_ms = (t1 - t0) / n_runs * 1000
+    peak_mb    = torch.cuda.max_memory_allocated(DEVICE) / 1024**2
     return elapsed_ms, peak_mb
 
 def count_params(model):
@@ -59,94 +61,72 @@ def count_params(model):
     embed = sum(p.numel() for p in model.tok_embeddings.parameters())
     return total, total - embed
 
-# Main ────────────────────────────────────────────────────────────────────────
+def bench_model(label, ModelArgs, ModelClass, kwargs):
+    model_args  = ModelArgs(**kwargs)
+    model       = ModelClass(model_args).to(DEVICE).to(torch.bfloat16)
+    model = torch.compile(model)
+    tokens, seq_codes = make_inputs(BATCH_SIZE, SEQ_LEN, model_args.vocab_size, DEVICE)
+    t_ms, mem_mb      = measure(model, tokens, seq_codes, N_WARMUP, N_RUNS)
+    total, nonembed   = count_params(model)
+    print(f"── {label} {'─'*(42 - len(label))}")
+    print(f"  Parâmetros totais     : {total:>12,}")
+    print(f"  Parâmetros (sem emb.) : {nonembed:>12,}")
+    print(f"  Latência forward      : {t_ms:>10.2f} ms")
+    print(f"  Pico de VRAM          : {mem_mb:>10.1f} MB")
+    del model
+    torch.cuda.empty_cache()
+    return {"label": label, "time": t_ms, "mem": mem_mb, "params": total}
+
+# ── Main ──────────────────────────────────────────────────────────────────────
+
 def main():
+    print(f"CUDA_VISIBLE_DEVICES : {os.environ.get('CUDA_VISIBLE_DEVICES')}")
+    print(f"GPU física em uso     : {torch.cuda.get_device_properties(0).name}")
     assert torch.cuda.is_available(), "CUDA não encontrado."
     print(f"\nDevice : {torch.cuda.get_device_name(0)}")
     print(f"Batch  : {BATCH_SIZE: 2d}  |  SeqLen : {SEQ_LEN}")
-    print(f"Warmup : {N_WARMUP}  |  Runs   : {N_RUNS}\n")
+    print(f"Warmup : {N_WARMUP}  |  Runs   : {N_RUNS}")
+    print(f"Modelos: {args.models}\n")
 
-    # BAM SSMax ────────────────────────────────────────────────
-    bam_args = SSMaxBATModelArgs(**MODEL_KWARGS)
-    bam_model = SSMaxBATransformer(bam_args).to(DEVICE).to(torch.bfloat16)
+    registry = {}
+    if "bam" in args.models:
+        from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
+        registry["bam"] = ("BAM SSMax", SSMaxBATModelArgs, SSMaxBATransformer)
+    if "cabam" in args.models:
+        from models.cabam import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+        registry["cabam"] = ("CABAM", CABAMModelArgs, CABAMTransformer)
+    if "dape" in args.models:
+        from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
+        registry["dape"] = ("DAPE ALiBi", DAPEALiBiModelArgs, DAPEALiBiTransformer)
+    if "bam_wo_fa" in args.models:
+        from models.bam_ssmax_wo_fa import SSMaxBATransformer, SSMaxBATModelArgs
+        registry["bam_wo_fa"] = ("BAM SSMax (sem FA)", SSMaxBATModelArgs, SSMaxBATransformer)
+    if "cabam_wo_fa" in args.models:
+        from models.cabam_wo_fa import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+        registry["cabam_wo_fa"] = ("CABAM (sem FA)", CABAMModelArgs, CABAMTransformer)
 
-    tokens, seq_codes = make_inputs(BATCH_SIZE, SEQ_LEN, bam_args.vocab_size, DEVICE)
+    results = {}
+    for key in args.models:
+        label, ModelArgs, ModelClass = registry[key]
+        results[key] = bench_model(label, ModelArgs, ModelClass, MODEL_KWARGS)
+        print()
 
-    bam_time, bam_mem = measure(bam_model, tokens, seq_codes, N_WARMUP, N_RUNS)
-    bam_total, bam_nonembed = count_params(bam_model)
+    if len(results) > 1:
+        baseline_key = args.models[0]
+        baseline     = results[baseline_key]
+        print(f"── Comparação vs {baseline['label']} {'─'*(30 - len(baseline['label']))}")
+        for key in args.models[1:]:
+            r = results[key]
+            delta_time   = r["time"]   - baseline["time"]
+            delta_mem    = r["mem"]    - baseline["mem"]
+            delta_params = r["params"] - baseline["params"]
+            ratio_time   = r["time"]   / baseline["time"]
+            ratio_mem    = r["mem"]    / baseline["mem"]
+            print(f"  {r['label']} vs {baseline['label']}:")
+            print(f"    Δ Parâmetros : {delta_params:>+12,}")
+            print(f"    Δ Latência   : {delta_time:>+10.2f} ms  ({ratio_time:.3f}×)")
+            print(f"    Δ VRAM       : {delta_mem:>+10.1f} MB  ({ratio_mem:.3f}×)")
+            print()
 
-    print("── BAM SSMax ──────────────────────────────")
-    print(f"  Parâmetros totais     : {bam_total:>12,}")
-    print(f"  Parâmetros (sem emb.) : {bam_nonembed:>12,}")
-    print(f"  Latência forward      : {bam_time:>10.2f} ms")
-    print(f"  Pico de VRAM          : {bam_mem:>10.1f} MB")
-
-    del bam_model # Tirar da memória
-    torch.cuda.empty_cache() # Limpar cache
-
-    # CABAM ────────────────────────────────────────────────
-    cabam_args = CABAMModelArgs(**MODEL_KWARGS)
-    cabam_model = CABAMTransformer(cabam_args).to(DEVICE).to(torch.bfloat16)
-
-    tokens, seq_codes = make_inputs(BATCH_SIZE, SEQ_LEN, cabam_args.vocab_size, DEVICE)
-
-    cabam_time, cabam_mem = measure(cabam_model, tokens, seq_codes, N_WARMUP, N_RUNS)
-    cabam_total, cabam_nonembed = count_params(cabam_model)
-
-    print("\n── CABAM ─────────────────────────────────")
-    print(f"  Parâmetros totais     : {cabam_total:>12,}")
-    print(f"  Parâmetros (sem emb.) : {cabam_nonembed:>12,}")
-    print(f"  Latência forward      : {cabam_time:>10.2f} ms")
-    print(f"  Pico de VRAM          : {cabam_mem:>10.1f} MB")
-
-    del cabam_model # Tirar da memória
-    torch.cuda.empty_cache() # Limpar cache
-    
-    # DAPE ALiBi ────────────────────────────────────────────────
-    dape_alibi_args = DAPEALiBiModelArgs(**MODEL_KWARGS)
-    dape_alibi_model = DAPEALiBiTransformer(dape_alibi_args).to(DEVICE).to(torch.bfloat16)
-    
-    tokens, seq_codes = make_inputs(BATCH_SIZE, SEQ_LEN, dape_alibi_args.vocab_size, DEVICE)
-    
-    dape_alibi_time, dape_alibi_mem = measure(dape_alibi_model, tokens, seq_codes, N_WARMUP, N_RUNS)
-    dape_alibi_total, dape_alibi_nonembed = count_params(dape_alibi_model)
-    print("\n── DAPE ALiBi ───────────────────────────────")
-    print(f"  Parâmetros totais     : {dape_alibi_total:>12,}")
-    print(f"  Parâmetros (sem emb.) : {dape_alibi_nonembed:>12,}")
-    print(f"  Latência forward      : {dape_alibi_time:>10.2f} ms")
-    print(f"  Pico de VRAM          : {dape_alibi_mem:>10.1f} MB")
-    
-    del dape_alibi_model # Tirar da memória
-    torch.cuda.empty_cache() # Limpar cache
-    
-    # Comparação ────────────────────────────────────────────────
-    delta_time = cabam_time - bam_time
-    ratio_time = cabam_time / bam_time
-    
-    delta_mem  = cabam_mem  - bam_mem
-    ratio_mem  = cabam_mem  / bam_mem
-    
-    delta_params = cabam_total - bam_total
-    
-    delta_time_dape = dape_alibi_time - bam_time
-    ratio_time_dape = dape_alibi_time / bam_time
-    
-    delta_mem_dape  = dape_alibi_mem  - bam_mem
-    ratio_mem_dape  = dape_alibi_mem  / bam_mem
-    
-    delta_params_dape = dape_alibi_total - bam_total
-
-    print("\n── CA-BAM vs BAM SSMax ───────────")
-    print(f"  Diferença de Parâmetros          : {delta_params:>+12,}")
-    print(f"  Diferença de Latência            : {delta_time:>+10.2f} ms  ({ratio_time:.3f}×)")
-    print(f"  Diferença de VRAM                : {delta_mem:>+10.1f} MB  ({ratio_mem:.3f}×)")
-    print()
-
-    print("── DAPE-ALiBi vs BAM SSMax ───────────")
-    print(f"  Diferença de Parâmetros          : {delta_params_dape:>+12,}")
-    print(f"  Diferença de Latência            : {delta_time_dape:>+10.2f} ms  ({ratio_time_dape:.3f}×)")
-    print(f"  Diferença de VRAM                : {delta_mem_dape:>+10.1f} MB  ({ratio_mem_dape:.3f}×)")
-    print()
-    
 if __name__ == "__main__":
     main()

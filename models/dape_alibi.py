@@ -7,7 +7,7 @@ from torch import nn
 import torch.nn.functional as F
 from einops import rearrange
 
-from .alibi_wo_flex_attention import ALiBiModelArgs, RMSNorm, FeedForward, repeat_kv
+from .alibi_wo_fa import ALiBiModelArgs, RMSNorm, FeedForward, repeat_kv
 
 
 @dataclass
@@ -51,7 +51,7 @@ class DAPEModule(nn.Module):
             correction: [bsz, n_heads, seqlen, seqlen]
         """
         # Expande o bias estático para o tamanho do batch
-        bias_tile = rearrange(alibi_bias, '1 h q k -> 1 h q k').expand(qk_t.shape[0], -1, -1, -1)
+        bias_tile = alibi_bias.expand(qk_t.shape[0], -1, -1, -1)
 
         # Concatena na dimensão das cabeças → [bsz, 2*n_heads, seqlen, seqlen]
         combined = torch.cat([qk_t, bias_tile], dim=1)
