@@ -2,11 +2,11 @@ import argparse
 import os
 
 parser = argparse.ArgumentParser()
-parser.add_argument("--gpu", type=int, default=0, help="índice da GPU a usar")
-parser.add_argument("--models", nargs="+", default=["bam_wo_fa", "cabam_wo_fa", "dape"],
-                    choices=["bam", "cabam", "dape", "bam_wo_fa", "cabam_wo_fa"],
+parser.add_argument("--gpu", type=int, default=4, help="índice da GPU a usar")
+parser.add_argument("--models", nargs="+", default=["rotary_ssmax_wo_fa", "bam_wo_fa", "cabam_wo_fa", "dape"],
+                    choices=["bam", "cabam", "dape", "bam_wo_fa", "cabam_wo_fa", "rotary_ssmax_wo_fa"],
                     help="modelos a benchmarkar (ex: --models bam cabam)")
-parser.add_argument("--seq_len", type=int, default=4096)
+parser.add_argument("--seq_len", type=int, default=2048)
 parser.add_argument("--batch_size", type=int, default=4)
 parser.add_argument("--n_warmup", type=int, default=5)
 parser.add_argument("--n_runs", type=int, default=20)
@@ -64,7 +64,7 @@ def count_params(model):
 def bench_model(label, ModelArgs, ModelClass, kwargs):
     model_args  = ModelArgs(**kwargs)
     model       = ModelClass(model_args).to(DEVICE).to(torch.bfloat16)
-    model = torch.compile(model)
+    #model = torch.compile(model)
     tokens, seq_codes = make_inputs(BATCH_SIZE, SEQ_LEN, model_args.vocab_size, DEVICE)
     t_ms, mem_mb      = measure(model, tokens, seq_codes, N_WARMUP, N_RUNS)
     total, nonembed   = count_params(model)
@@ -104,29 +104,15 @@ def main():
     if "cabam_wo_fa" in args.models:
         from models.cabam_wo_fa import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
         registry["cabam_wo_fa"] = ("CABAM (sem FA)", CABAMModelArgs, CABAMTransformer)
+    if "rotary_ssmax_wo_fa" in args.models:
+        from models.rotary_ssmax_wo_fa import RotarySSMaxTransformer, RotarySSMaxModelArgs
+        registry["rotary_ssmax_wo_fa"] = ("Rotary SSMax", RotarySSMaxModelArgs, RotarySSMaxTransformer)
 
     results = {}
     for key in args.models:
         label, ModelArgs, ModelClass = registry[key]
         results[key] = bench_model(label, ModelArgs, ModelClass, MODEL_KWARGS)
         print()
-
-    if len(results) > 1:
-        baseline_key = args.models[0]
-        baseline     = results[baseline_key]
-        print(f"── Comparação vs {baseline['label']} {'─'*(30 - len(baseline['label']))}")
-        for key in args.models[1:]:
-            r = results[key]
-            delta_time   = r["time"]   - baseline["time"]
-            delta_mem    = r["mem"]    - baseline["mem"]
-            delta_params = r["params"] - baseline["params"]
-            ratio_time   = r["time"]   / baseline["time"]
-            ratio_mem    = r["mem"]    / baseline["mem"]
-            print(f"  {r['label']} vs {baseline['label']}:")
-            print(f"    Δ Parâmetros : {delta_params:>+12,}")
-            print(f"    Δ Latência   : {delta_time:>+10.2f} ms  ({ratio_time:.3f}×)")
-            print(f"    Δ VRAM       : {delta_mem:>+10.1f} MB  ({ratio_mem:.3f}×)")
-            print()
 
 if __name__ == "__main__":
     main()
