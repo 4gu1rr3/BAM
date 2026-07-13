@@ -5,3 +5,7 @@ data/*
 *.pyc
 *.png
 __pycache__/
+Sout/*
+pytools/*
+env_cabam/*
+env_cabam_latest/*

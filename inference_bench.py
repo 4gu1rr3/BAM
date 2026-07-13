@@ -93,7 +93,7 @@ def main():
         from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
         registry["bam"] = ("BAM SSMax", SSMaxBATModelArgs, SSMaxBATransformer)
     if "cabam" in args.models:
-        from models.cabam import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+        from models.cabam_ssmax import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
         registry["cabam"] = ("CABAM", CABAMModelArgs, CABAMTransformer)
     if "dape" in args.models:
         from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
