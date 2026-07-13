@@ -69,10 +69,13 @@ class AttentionPrior(nn.Module):
         
         pos_emb = self.mlp(x) # (bs, seqlen, 3*n_heads) 
         pos_emb = pos_emb.view(bs, seqlen, self.n_heads, 3).transpose(1,2)
-        pos_emb[..., 0] = pos_emb[..., 0].exp()
-        pos_emb[..., 2] = pos_emb[..., 2].exp() - pos_emb[..., 2].neg().exp()
-        
-        return pos_emb
+       
+        alpha = pos_emb[..., 0].exp()
+        beta = pos_emb[..., 1]
+        mu_raw = pos_emb[..., 2]
+        mu = mu_raw.exp() - mu_raw.neg().exp()
+
+        return (alpha, beta, mu)
 
 def get_slopes(n):
     def get_slopes_power_of_2(n):
@@ -98,6 +101,12 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
         .reshape(bs, slen, n_kv_heads * n_rep, head_dim)
     )
 
+@torch.compiler.disable  # equivalent: torch._dynamo.disable
+def _materialize(*tensors):
+    # Runs eagerly, forcing a graph break so these tensors re-enter the
+    # flex_attention subgraph as fixed-layout INPUTS rather than fused
+    # pointwise buffers with a FlexibleLayout.
+    return tuple(t.contiguous() for t in tensors)
 
 class BayesianAttention(nn.Module):
     def __init__(self, args: SSMaxBATModelArgs):
@@ -143,11 +152,10 @@ class BayesianAttention(nn.Module):
         values = values.transpose(1, 2)  # (bs, n_local_heads, cache_len + seqlen, head_dim)
 
         ssmax_mul = section_log_len * self.seq_scale
-        prior_params = self.prior(x) if self.local_positional_encoding else global_prior
+        alpha_t, beta_t, mu_t = self.prior(x) if self.local_positional_encoding else global_prior
         
-        alpha_t = prior_params[..., 0].contiguous()
-        beta_t = prior_params[..., 1].contiguous()
-        mu_t = prior_params[..., 2].contiguous()
+        alpha_t, beta_t, mu_t, ssmax_mul = _materialize(alpha_t, beta_t, mu_t, ssmax_mul)
+
         def score_mod(score, b, h, q_idx, kv_idx):
             alpha = alpha_t[b, h, q_idx]
             beta = beta_t[b, h, q_idx]
@@ -159,16 +167,8 @@ class BayesianAttention(nn.Module):
             score = score + prior
             return score * ssmax_mul[b, h, q_idx]
 
-        output = flex_attention(queries, keys, values, score_mod=score_mod, block_mask=mask,
-                                kernel_options = {
-                                    "BLOCK_M":  32,
-                                    "BLOCK_N":  32,
-                                    "BLOCK_M1": 32,
-                                    "BLOCK_N1": 32,
-                                    "BLOCK_M2": 32,
-                                    "BLOCK_N2": 32,
-                                }
-                                )
+
+        output = flex_attention(queries, keys, values, score_mod=score_mod, block_mask=mask)
 
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
         return self.wo(output)

@@ -107,6 +107,12 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
         .reshape(bs, slen, n_kv_heads * n_rep, head_dim)
     )
 
+@torch.compiler.disable  # equivalent: torch._dynamo.disable
+def _materialize(*tensors):
+    # Runs eagerly, forcing a graph break so these tensors re-enter the
+    # flex_attention subgraph as fixed-layout INPUTS rather than fused
+    # pointwise buffers with a FlexibleLayout.
+    return tuple(t.contiguous() for t in tensors)
 
 class BayesianAttention(nn.Module):
     def __init__(self, args: SSMaxBATModelArgs):
@@ -153,6 +159,7 @@ class BayesianAttention(nn.Module):
 
         ssmax_mul = section_log_len * self.seq_scale
         prior = self.prior(seqlen) if self.local_positional_encoding else global_prior
+        prior, ssmax_mul = _materialize(prior, ssmax_mul)
         def score_mod(score, b, h, q_idx, kv_idx):
             score = score + prior[h, seqlen-1+kv_idx-q_idx]
             return score * ssmax_mul[b, h, q_idx]
