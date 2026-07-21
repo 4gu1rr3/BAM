@@ -33,14 +33,38 @@ from models.bam import BATransformer, BATModelArgs
 from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
 from models.nope import NoPEModelArgs, NoPETransformer
 from models.nope_ssmax import NoPESSMaxModelArgs, NoPESSMaxTransformer
-from models.cabam import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+from models.cabam_ssmax import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
 from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
 
 from utils import print0, round_to_multiple, set_lr, compute_radam_lr, DistributedShardedDataset, StateMonitor
 ########################################################################################
 ########################################################################################
 
+class PriorStatMonitor:
+    """Guarda o max de |alpha|, |beta|, |mu| por step, via hook nos AttentionPrior."""
+    def __init__(self, model, device):
+        self.device = device
+        self.handles = []
+        self.reset()
+        for name, m in model.named_modules():
+            if type(m).__name__ == "AttentionPrior":
+                self.handles.append(m.register_forward_hook(self._hook))
 
+    def _hook(self, mod, inp, out):
+        alpha, beta, mu = out
+        with torch.no_grad():
+            self.a = torch.maximum(self.a, alpha.detach().abs().max())
+            self.b = torch.maximum(self.b, beta.detach().abs().max())
+            self.m = torch.maximum(self.m, mu.detach().abs().max())
+
+    def reset(self):
+        z = torch.zeros((), device=self.device)
+        self.a, self.b, self.m = z.clone(), z.clone(), z.clone()
+
+    def report(self):
+        return (f"max|alpha| {self.a.item():.3e} | "
+                f"max|beta| {self.b.item():.3e} | max|mu| {self.m.item():.3e}")
+        
 if __name__ == "__main__":
     print0(f"Running pytorch {torch.version.__version__}")
 
@@ -61,6 +85,7 @@ if __name__ == "__main__":
     parser.add_argument("--theta_alpha_trainable", type=int, default=1, help="trainable theta alpha exponent multiplier (scale) for BAM")
     parser.add_argument("--theta_mu_trainable", type=int, default=0, help="trainable theta mu (location parameter - exp(theta_mu) - exp(-theta_mu)) for BAM")
     parser.add_argument("--prior_lr", type=float, default=None, help="specific learning rate for the BAM prior parameters, if not set, will use the learning rate")
+    parser.add_argument("--prior_weight_decay", type=float, default=0.0, help="weight decay applied only to the BAM/CABAM prior parameters (theta_alpha/beta/mu or their MLP), pulls them back from numerically extreme regions")
     parser.add_argument("--no_seq_scale", action=argparse.BooleanOptionalAction, help="whether to disable the SSMax sequence scale in BAM")
     # token layout for each step of the optimization
     parser.add_argument("--batch_size", type=int, default=4, help="batch size, in units of #batch dimensions")
@@ -296,6 +321,8 @@ if __name__ == "__main__":
     raw_model = model.module if ddp else model # always contains the "raw" unwrapped model
     raw_model = raw_model._orig_mod if args.compile else model
 
+    stat_monitor = PriorStatMonitor(raw_model, device) # monitor the max of |alpha|, |beta|, |mu| for BAM
+    
     # init the optimizer
     # optimizer = torch.optim.AdamW(raw_model.parameters(), lr=args.learning_rate, 
     #                               betas=(0.9, 0.95), weight_decay=args.weight_decay,
@@ -312,7 +339,7 @@ if __name__ == "__main__":
          'init_lr': args.learning_rate, 'lr': args.learning_rate},
         {'params': [p for n, p in param_dict.items() if p.squeeze().dim() < 2  and 'prior' not in n], 'weight_decay': 0.0, 
          'init_lr': args.learning_rate, 'lr': args.learning_rate},
-        {'params': [p for n, p in param_dict.items() if 'prior' in n], 'weight_decay': 0.0, 'lr': args.prior_lr, 
+        {'params': [p for n, p in param_dict.items() if 'prior' in n], 'weight_decay': args.prior_weight_decay, 'lr': args.prior_lr,
          'init_lr': args.prior_lr, 'lr': args.prior_lr},
     ]
     optimizer = torch.optim.RAdam(optim_groups, betas=(0.9, 0.95), weight_decay=args.weight_decay, decoupled_weight_decay=True)
@@ -442,6 +469,7 @@ if __name__ == "__main__":
             train_loader.reset()
         # micro-batch loop where we do gradient accumulation to reach desired total batch size
         lossf = 0.0 # for getting the mean loss (as simple float) over the accumulation steps
+        stat_monitor.reset() # reset the BAM prior monitor for this step
         for micro_step, (input_ids, seq_codes, targets) in enumerate(batches):
             input_ids, seq_codes, targets = input_ids.to(device), seq_codes.to(device), targets.to(device)
             # input_ids, targets = input_ids.to(device), targets.to(device)
@@ -465,6 +493,21 @@ if __name__ == "__main__":
         if ddp:
             dist.all_reduce(lossf, op=dist.ReduceOp.AVG)
         lossf = lossf.item()
+        
+        # --- diagnóstico: grad só dos parâmetros do prior (pré-clip) ---
+        with torch.no_grad():
+            prior_sq   = torch.zeros((), device=device)
+            prior_max  = torch.zeros((), device=device)
+            prior_finite = True
+            for _n, _p in raw_model.named_parameters():
+                if 'prior' in _n and _p.grad is not None:
+                    _g = _p.grad.detach()
+                    prior_finite = prior_finite and bool(torch.isfinite(_g).all())
+                    prior_sq  += _g.float().pow(2).sum()
+                    prior_max  = torch.maximum(prior_max, _g.abs().max())
+            prior_grad_norm = prior_sq.sqrt()
+            
+            
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         # # determine and set the learning rate for this iteration
         optimizer = set_lr(optimizer, step-step_correction, num_iterations, args)
@@ -479,6 +522,12 @@ if __name__ == "__main__":
         
         # step the optimizer
         # if lossf == lossf: # check for NaN
+        
+        # diagnóstico: print do monitor de estatísticas do prior
+        print0(f"[prior] step {step} | {stat_monitor.report()} | "
+       f"grad_norm {prior_grad_norm.item():.3e} | grad_max {prior_max.item():.3e} | "
+       f"finite {prior_finite} | total_norm {norm.item():.3e}")
+        
         if lossf == lossf and norm == norm: # check for NaN
             optimizer.step()
         else:

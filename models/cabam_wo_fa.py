@@ -78,8 +78,10 @@ class AttentionPrior(nn.Module):
         pos_emb = pos_emb.view(bs, seqlen, self.n_heads, 3)        # [bs, seqlen, n_heads, 3]
         pos_emb = pos_emb.transpose(1, 2)                          # [bs, n_heads, seqlen, 3]
 
-        # activations idênticas ao cabam com flex_attention
-        pos_emb[..., 0] = pos_emb[..., 0].exp()                   # alpha > 0
+        # activations idênticas ao cabam_ssmax.py: alpha via softplus (mesmo
+        # range (0, inf) e mesma familia GGD que exp, mas sem o gradiente
+        # auto-reforcante que causa o overflow). beta e mu inalterados.
+        pos_emb[..., 0] = F.softplus(pos_emb[..., 0])             # alpha > 0
         pos_emb[..., 2] = pos_emb[..., 2].exp() - pos_emb[..., 2].neg().exp()  # mu = sinh
 
         return pos_emb  # [bs, n_heads, seqlen, 3]
@@ -115,6 +117,10 @@ class AttentionPrior(nn.Module):
         # prior = -((|b_pos| + eps)^beta) * alpha
         # alpha e beta são por q_idx → unsqueeze na dim kv
         bias = -((b_pos.abs() + self.eps) ** beta.unsqueeze(-1)) * alpha.unsqueeze(-1)
+        # rede de seguranca identica ao cabam_ssmax.py: alpha=exp(.) pode
+        # estourar pra inf enquanto (|b_pos|+eps)**beta faz underflow pra 0
+        # -> inf*0=nan, que clamp comum nao sanitiza.
+        bias = torch.nan_to_num(bias, nan=-50.0, posinf=-50.0, neginf=-50.0)
         # bias: [bs, n_heads, T, T]
 
         return bias

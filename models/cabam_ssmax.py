@@ -49,30 +49,41 @@ class RMSNorm(torch.nn.Module):
         return output * self.weight
 
 class AttentionPrior(nn.Module):
-    def __init__(self, n_heads: int, dim: int, hidden_dim: int):
+    def __init__(self, n_heads: int, dim: int, hidden_dim: int, train_theta_alpha: bool = True, train_theta_beta: bool = True, train_theta_mu: bool = False):
         super().__init__()
         self.eps = 1e-5
-        
+        self.train_theta_alpha = train_theta_alpha
+        self.train_theta_beta = train_theta_beta
+        self.train_theta_mu = train_theta_mu
+        self.n_heads = n_heads
         self.mlp = nn.Sequential(
             nn.Linear(dim, hidden_dim, bias=True),
             nn.SiLU(),
             nn.Linear(hidden_dim, 3*n_heads, bias=True),
         )
-        self.n_heads = n_heads
-        
+
+        nn.init.zeros_(self.mlp[-1].weight)
+        nn.init.zeros_(self.mlp[-1].bias)
+
     def forward(self, x:torch.Tensor) -> torch.Tensor:
         # x: (bs, n_heads, seqlen, head_dim)
         # output: (bs, n_heads, seqlen, 3)
         # or output: (bs, n_heads, seqlen, seqlen)
-        
+
         bs, seqlen, dim = x.shape
-        
-        pos_emb = self.mlp(x) # (bs, seqlen, 3*n_heads) 
+
+        pos_emb = self.mlp(x) # (bs, seqlen, 3*n_heads)
         pos_emb = pos_emb.view(bs, seqlen, self.n_heads, 3).transpose(1,2)
-       
-        alpha = pos_emb[..., 0].exp()
-        beta = pos_emb[..., 1]
-        mu_raw = pos_emb[..., 2]
+
+        # alpha: softplus em vez de exp. Cobre o mesmo range (0, inf) -- e a
+        # mesma familia GGD -- mas sem o gradiente auto-reforcante de exp
+        # (d(alpha)/dtheta = alpha, que e o motor da bola de neve numerica).
+        # softplus satura em d(alpha)/dtheta <= 1, sem mudar o que e
+        # representavel. beta e mu permanecem exatamente como no BAM original.
+        alpha_raw = pos_emb[..., 0] if self.train_theta_alpha else pos_emb[..., 0].detach()
+        alpha = F.softplus(alpha_raw)
+        beta = pos_emb[..., 1] if self.train_theta_beta else pos_emb[..., 1].detach()
+        mu_raw = pos_emb[..., 2] if self.train_theta_mu else pos_emb[..., 2].detach()
         mu = mu_raw.exp() - mu_raw.neg().exp()
 
         return (alpha, beta, mu)
@@ -124,7 +135,7 @@ class BayesianAttention(nn.Module):
 
         self.local_positional_encoding = not args.global_positional_encoding
         if self.local_positional_encoding:
-            self.prior = AttentionPrior(n_heads=args.n_heads, dim=args.dim, hidden_dim=args.mlp_width)
+            self.prior = AttentionPrior(n_heads=args.n_heads, dim=args.dim, hidden_dim=args.mlp_width, train_theta_alpha=args.train_theta_alpha, train_theta_beta=args.train_theta_beta, train_theta_mu=args.train_theta_mu)
 
         seq_scale =  torch.ones((1, args.n_heads, 1), dtype=torch.float)
         self.seq_scale = nn.Parameter(seq_scale, requires_grad=args.seq_scale)
@@ -163,7 +174,14 @@ class BayesianAttention(nn.Module):
 
             b_pos = kv_idx - q_idx - mu
             prior = -((b_pos.abs() + self.prior.eps) ** beta) * alpha
-            
+            # rede de seguranca numerica: alpha=exp(.) pode estourar pra inf
+            # enquanto (|b_pos|+eps)**beta faz underflow pra 0 -> inf*0=nan,
+            # que um clamp comum nao sanitiza. exp(-50)~2e-22 ja e
+            # indistinguivel de zero em fp, entao mapear nan/inf pra -50 nao
+            # muda a densidade GGD na faixa normal de operacao, so intercepta
+            # o caso patologico.
+            prior = torch.nan_to_num(prior, nan=-50.0, posinf=-50.0, neginf=-50.0)
+
             score = score + prior
             return score * ssmax_mul[b, h, q_idx]
 
