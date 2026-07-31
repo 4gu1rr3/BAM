@@ -81,6 +81,7 @@ class AttentionPrior(nn.Module):
         # softplus satura em d(alpha)/dtheta <= 1, sem mudar o que e
         # representavel. beta e mu permanecem exatamente como no BAM original.
         alpha_raw = pos_emb[..., 0] if self.train_theta_alpha else pos_emb[..., 0].detach()
+        # alpha = alpha_raw.exp()
         alpha = F.softplus(alpha_raw)
         beta = pos_emb[..., 1] if self.train_theta_beta else pos_emb[..., 1].detach()
         mu_raw = pos_emb[..., 2] if self.train_theta_mu else pos_emb[..., 2].detach()
@@ -191,6 +192,66 @@ class BayesianAttention(nn.Module):
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
         return self.wo(output)
 
+    def forward_cached(
+        self,
+        x: torch.Tensor,
+        mask: Optional[torch.Tensor],
+        section_log_len: torch.Tensor,
+        start_pos_t: torch.Tensor,
+        kv_cache: Optional[dict],
+    ):
+        # Chunked-prefill counterpart of forward(): x holds only the current
+        # chunk of queries; keys/values from prior chunks are carried in
+        # kv_cache and concatenated here, so attention still sees the full
+        # prefix without recomputing it. q_idx below is chunk-local (matches
+        # alpha_t/beta_t/mu_t/ssmax_mul, which are only computed for this
+        # chunk's queries); kv_idx is absolute since the cache is never
+        # evicted, so b_pos uses start_pos_t + q_idx as the absolute query
+        # position -- otherwise identical to forward()'s formula.
+        bsz, seqlen, _ = x.shape
+        queries, keys, values = self.wq(x), self.wk(x), self.wv(x)
+
+        queries = queries.view(bsz, seqlen, self.n_local_heads, self.head_dim)
+        keys = keys.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        values = values.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+
+        keys = repeat_kv(keys, self.n_rep)
+        values = repeat_kv(values, self.n_rep)
+
+        queries = queries.transpose(1, 2)  # (bs, n_local_heads, C, head_dim)
+        keys = keys.transpose(1, 2)        # (bs, n_local_heads, C, head_dim)
+        values = values.transpose(1, 2)
+
+        if kv_cache is None:
+            k_full, v_full = keys, values
+        else:
+            k_full = torch.cat([kv_cache['k'], keys], dim=2)
+            v_full = torch.cat([kv_cache['v'], values], dim=2)
+        new_kv_cache = {'k': k_full, 'v': v_full}
+
+        ssmax_mul = section_log_len * self.seq_scale
+        alpha_t, beta_t, mu_t = self.prior(x)
+
+        alpha_t, beta_t, mu_t, ssmax_mul = _materialize(alpha_t, beta_t, mu_t, ssmax_mul)
+
+        def score_mod(score, b, h, q_idx, kv_idx):
+            alpha = alpha_t[b, h, q_idx]
+            beta = beta_t[b, h, q_idx]
+            mu = mu_t[b, h, q_idx]
+
+            abs_q_idx = start_pos_t + q_idx
+            b_pos = kv_idx - abs_q_idx - mu
+            prior = -((b_pos.abs() + self.prior.eps) ** beta) * alpha
+            prior = torch.nan_to_num(prior, nan=-50.0, posinf=-50.0, neginf=-50.0)
+
+            score = score + prior
+            return score * ssmax_mul[b, h, q_idx]
+
+        output = flex_attention(queries, k_full, v_full, score_mod=score_mod, block_mask=mask)
+
+        output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
+        return self.wo(output), new_kv_cache
+
 
 class FeedForward(nn.Module):
     def __init__(
@@ -241,6 +302,19 @@ class TransformerBlock(nn.Module):
         h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len)
         out = h + self.feed_forward(self.ffn_norm(h))
         return out
+
+    def forward_cached(
+        self,
+        x: torch.Tensor,
+        mask: Optional[torch.Tensor],
+        section_log_len: torch.Tensor,
+        start_pos_t: torch.Tensor,
+        kv_cache: Optional[dict],
+    ):
+        attn_out, new_kv_cache = self.attention.forward_cached(self.attention_norm(x), mask, section_log_len, start_pos_t, kv_cache)
+        h = x + attn_out
+        out = h + self.feed_forward(self.ffn_norm(h))
+        return out, new_kv_cache
 
 class SSMaxBATransformer(nn.Module):
     def __init__(self, params: SSMaxBATModelArgs):
@@ -297,3 +371,44 @@ class SSMaxBATransformer(nn.Module):
         h = self.norm(h)
         output = self.output(h).float()
         return output
+
+    def forward_chunk(
+        self,
+        tokens: torch.Tensor,
+        start_pos: int,
+        kv_caches: list,
+        compute_logits: bool,
+        logits_tail: Optional[int] = None,
+    ):
+        # Chunked-prefill path for evaluating sequences too long to run in a
+        # single forward(): processes one chunk of `tokens` against a
+        # per-layer KV cache carried across calls (see forward_cached above
+        # for the position-offset math). Only meant for single-document
+        # (seq_codes=None), local-positional-encoding inference; skips the
+        # vocab projection unless compute_logits, since materializing
+        # logits for every chunk (not just the one we need) is what caused
+        # the OOMs at ~123k tokens in the non-chunked path.
+        bsz, seqlen = tokens.shape
+        device = tokens.device
+        h = self.tok_embeddings(tokens)
+
+        start_pos_t = torch.tensor(start_pos, device=device)
+        positions_log = torch.arange(start_pos + 1, start_pos + seqlen + 1, device=device, dtype=torch.float32).log()
+        section_log_len = positions_log.unsqueeze(0).unsqueeze(0).repeat(bsz, 1, 1)
+
+        total_len = start_pos + seqlen
+
+        def mask_mod(b, h, q_idx, kv_idx):
+            return kv_idx <= (start_pos_t + q_idx)
+        mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=total_len, device=device, BLOCK_SIZE=128)
+
+        for layer_id, layer in enumerate(self.layers):
+            h, kv_caches[layer_id] = layer.forward_cached(h, mask, section_log_len, start_pos_t, kv_caches[layer_id])
+
+        if compute_logits:
+            if logits_tail is not None:
+                h = h[:, -logits_tail:]
+            h = self.norm(h)
+            output = self.output(h).float()
+            return output, kv_caches
+        return None, kv_caches

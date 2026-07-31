@@ -41,29 +41,89 @@ from utils import print0, round_to_multiple, set_lr, compute_radam_lr, Distribut
 ########################################################################################
 
 class PriorStatMonitor:
-    """Guarda o max de |alpha|, |beta|, |mu| por step, via hook nos AttentionPrior."""
+    """Estatisticas de |alpha|, |beta|, |mu| por step, via hook nos AttentionPrior.
+    So diagnostico -- nao afeta o treino nem a matematica do prior.
+
+    Alem do max global (que ja existia), agora tambem guarda:
+      - em que camada (e cabeca) o max ocorreu, pra saber se e sempre a mesma
+        camada/cabeca "espetando" ou se o max roda entre varias;
+      - a media global, pra comparar com o max e ver o quao extremo ele e
+        frente ao valor tipico;
+      - fracao de entradas (batch x cabeca x posicao) acima de alguns
+        limiares, pra distinguir um outlier raro (fracao ~0) de um
+        comportamento amplo entre camadas/cabecas/tokens (fracao alta);
+      - max por camada, pra ver concentracao/especializacao entre camadas.
+    Esses sinais servem pra responder se o comportamento extremo da MLP e
+    generalizado (muitas cabecas/tokens fazendo isso) ou um outlier isolado
+    (parecido com decorar poucos casos) -- sem precisar mudar a formulacao.
+    """
+
+    THRESHOLDS = {"a": (1.0, 2.0, 4.0), "b": (2.0, 5.0, 10.0)}
+    LABELS = {"a": "alpha", "b": "beta", "m": "mu"}
+
     def __init__(self, model, device):
         self.device = device
         self.handles = []
+        prior_modules = [(name, m) for name, m in model.named_modules() if type(m).__name__ == "AttentionPrior"]
+        self.n_layers = len(prior_modules)
         self.reset()
-        for name, m in model.named_modules():
-            if type(m).__name__ == "AttentionPrior":
-                self.handles.append(m.register_forward_hook(self._hook))
+        for layer_idx, (_name, m) in enumerate(prior_modules):
+            self.handles.append(m.register_forward_hook(self._make_hook(layer_idx)))
 
-    def _hook(self, mod, inp, out):
-        alpha, beta, mu = out
-        with torch.no_grad():
-            self.a = torch.maximum(self.a, alpha.detach().abs().max())
-            self.b = torch.maximum(self.b, beta.detach().abs().max())
-            self.m = torch.maximum(self.m, mu.detach().abs().max())
+    def _make_hook(self, layer_idx):
+        def _hook(mod, inp, out):
+            # Diagnostic only. CABAM's AttentionPrior returns a (alpha, beta, mu)
+            # tuple; plain BAM's AttentionPrior (same class name, different
+            # module) returns a single combined bias tensor instead -- nothing
+            # to break out per-component, so just skip stats for that case.
+            if not (isinstance(out, tuple) and len(out) == 3):
+                return
+            alpha, beta, mu = out
+            with torch.no_grad():
+                for key, val in (("a", alpha), ("b", beta), ("m", mu)):
+                    v = val.detach().abs().float()  # (bs, n_heads, seqlen)
+                    s = self.stats[key]
+                    vmax = v.max()
+                    if vmax > s["max"]:
+                        s["max"].copy_(vmax)
+                        s["max_layer"] = layer_idx
+                        head_maxes = v.amax(dim=(0, 2))  # per-head max within this layer/call
+                        s["max_head"] = int(head_maxes.argmax().item())
+                    s["sum"] += v.sum()
+                    s["count"] += v.numel()
+                    s["layer_max"][layer_idx] = torch.maximum(s["layer_max"][layer_idx], vmax)
+                    for t in self.THRESHOLDS.get(key, ()):
+                        s["above"][t] += (v > t).sum()
+        return _hook
 
     def reset(self):
         z = torch.zeros((), device=self.device)
-        self.a, self.b, self.m = z.clone(), z.clone(), z.clone()
+        self.stats = {}
+        for key in ("a", "b", "m"):
+            self.stats[key] = {
+                "max": z.clone(), "max_layer": -1, "max_head": -1,
+                "sum": z.clone(), "count": torch.zeros((), device=self.device),
+                "layer_max": torch.zeros(self.n_layers, device=self.device),
+                "above": {t: torch.zeros((), device=self.device) for t in self.THRESHOLDS.get(key, ())},
+            }
 
     def report(self):
-        return (f"max|alpha| {self.a.item():.3e} | "
-                f"max|beta| {self.b.item():.3e} | max|mu| {self.m.item():.3e}")
+        parts = []
+        for key in ("a", "b", "m"):
+            s = self.stats[key]
+            label = self.LABELS[key]
+            count = s["count"].clamp(min=1)
+            mean = (s["sum"] / count).item()
+            seg = f"max|{label}| {s['max'].item():.3e} (L{s['max_layer']}H{s['max_head']}) | mean|{label}| {mean:.3e}"
+            if self.THRESHOLDS.get(key):
+                frac = " ".join(f">{t:g}:{(s['above'][t] / count).item() * 100:.2f}%" for t in self.THRESHOLDS[key])
+                seg += f" | frac_{label}[{frac}]"
+            parts.append(seg)
+        alpha_layer_max = ",".join(f"{v:.1f}" for v in self.stats["a"]["layer_max"].tolist())
+        beta_layer_max = ",".join(f"{v:.1f}" for v in self.stats["b"]["layer_max"].tolist())
+        parts.append(f"layer_max_alpha=[{alpha_layer_max}]")
+        parts.append(f"layer_max_beta=[{beta_layer_max}]")
+        return " | ".join(parts)
         
 if __name__ == "__main__":
     print0(f"Running pytorch {torch.version.__version__}")

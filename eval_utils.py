@@ -19,7 +19,7 @@ from models.bam import BATransformer, BATModelArgs
 from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
 from models.nope import NoPEModelArgs, NoPETransformer
 from models.nope_ssmax import NoPESSMaxModelArgs, NoPESSMaxTransformer
-from models.cabam import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+from models.cabam_ssmax import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
 from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
 
 
@@ -162,19 +162,34 @@ class PerplexityEvaluator:
 
         if dataset_dir == 'wikipedia':
             tokenizer = AutoTokenizer.from_pretrained('mistralai/Mistral-7B-Instruct-v0.3')
-            # load the dataset from the wikitext-2 dataset
-            dataset = load_dataset("wikimedia/wikipedia", "20231101.en", split="train")
+            # Streaming avoids materializing/downloading the full ~20GB split
+            # just to find a handful of long-enough articles.
+            dataset = load_dataset("wikimedia/wikipedia", "20231101.en", split="train", streaming=True)
             tokens = []
-            for i in range(0, len(dataset), 4096):
-                input_ids = tokenizer(dataset[i:i+4096]['text'], add_special_tokens=True)['input_ids']
+            batch = []
+            scanned = 0
+            def flush(batch):
+                if not batch:
+                    return
+                input_ids = tokenizer(batch, add_special_tokens=True)['input_ids']
                 for input_id in input_ids:
                     if len(input_id) >= seq_len+1:
                         tokens.append(input_id[:seq_len+1])
-                        print(f"Loaded {len(tokens)} articles", end='\r')
+                        print(f"Loaded {len(tokens)}/{wiki_articles} articles >= {seq_len+1} tokens (scanned {scanned})", flush=True)
                     if len(tokens) >= wiki_articles:
                         break
+            for example in dataset:
+                batch.append(example['text'])
+                scanned += 1
+                if scanned % 2000 == 0:
+                    print(f"...scanned {scanned} wikipedia articles, found {len(tokens)}/{wiki_articles} long enough", flush=True)
+                if len(batch) >= 64:
+                    flush(batch)
+                    batch = []
                 if len(tokens) >= wiki_articles:
                     break
+            if len(tokens) < wiki_articles:
+                flush(batch)
             self.tokens = torch.tensor(tokens).long()
 
                 
@@ -307,7 +322,7 @@ class Evaluator:
                     results['passkey'], passkey_result = evaluator.evaluate(model, prev_results=results['passkey'])
                     passkey_results[evaluator.sampling] = passkey_result
             else:
-                passkey_result = None
+                passkey_results = None
 
             if 'perplexity' in evals:
                 perplexity_results = {}
@@ -315,7 +330,7 @@ class Evaluator:
                     results['perplexity'], perplexity_result = evaluator.evaluate(model, prev_results=results['perplexity'])
                     perplexity_results[evaluator.dataset_dir] = perplexity_result
             else:
-                perplexity_result = None
+                perplexity_results = None
 
         # Save the results
         with open(os.path.join(model_dir, 'results.json'), 'w') as f:
