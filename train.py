@@ -35,6 +35,7 @@ from models.nope import NoPEModelArgs, NoPETransformer
 from models.nope_ssmax import NoPESSMaxModelArgs, NoPESSMaxTransformer
 from models.cabam_ssmax import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
 from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
+from models.cope import CoPETransformer, CoPEModelArgs
 
 from utils import print0, round_to_multiple, set_lr, compute_radam_lr, DistributedShardedDataset, StateMonitor
 ########################################################################################
@@ -134,7 +135,7 @@ if __name__ == "__main__":
     # file system input / output
     parser.add_argument("--dataset", type=str, default="10B", help="data/ directory containing the training data")
     parser.add_argument("--log_dir", type=str, default="logs", help="output directory to which to write logs and checkpoints")
-    parser.add_argument("--position_encoding", type=str, default="nope", help="nope|nope_ssmax|sinusoidal|sinusoidal_ssmax|rotary|rotary_ssmax|alibi|alibi_ssmax|bam|bam_ssmax|cabam|dape_alibi")
+    parser.add_argument("--position_encoding", type=str, default="nope", help="nope|nope_ssmax|sinusoidal|sinusoidal_ssmax|rotary|rotary_ssmax|alibi|alibi_ssmax|bam|bam_ssmax|cabam|dape_alibi|cope")
     parser.add_argument("--model_size", type=str, default="l12", help="l6|l8|l12|l15|l18|l24")
     # Bayesian Attention Mechanism arguments
     parser.add_argument("--global_prior", action=argparse.BooleanOptionalAction, help="whether to use a global prior for BAM")
@@ -147,6 +148,10 @@ if __name__ == "__main__":
     parser.add_argument("--prior_lr", type=float, default=None, help="specific learning rate for the BAM prior parameters, if not set, will use the learning rate")
     parser.add_argument("--prior_weight_decay", type=float, default=0.0, help="weight decay applied only to the BAM/CABAM prior parameters (theta_alpha/beta/mu or their MLP), pulls them back from numerically extreme regions")
     parser.add_argument("--no_seq_scale", action=argparse.BooleanOptionalAction, help="whether to disable the SSMax sequence scale in BAM")
+    # Contextual Position Encoding (CoPE) arguments
+    parser.add_argument("--cope_npos_max", type=int, default=64, help="maximum contextual position p_max for CoPE (paper uses 64 for a 1024 context)")
+    parser.add_argument("--cope_gate_mode", type=str, default="attn", choices=["attn", "sep_keys"], help="how CoPE computes its gates: reuse the attention logits (attn, the paper's headline config and the only param-matched one) or a dedicated key projection (sep_keys, best PPL in the paper's Table 8 but adds one projection per layer)")
+    parser.add_argument("--cope_no_share_layers", action=argparse.BooleanOptionalAction, help="give each layer its own CoPE position embeddings instead of sharing them across layers")
     # token layout for each step of the optimization
     parser.add_argument("--batch_size", type=int, default=4, help="batch size, in units of #batch dimensions")
     parser.add_argument("--sequence_length", type=int, default=64, help="sequence length")
@@ -176,10 +181,12 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="", help="by default we autodetect, or set it here")
     parser.add_argument("--compile", action=argparse.BooleanOptionalAction, help="torch.compile the model")
     parser.add_argument("--dtype", type=str, default="float32", help="float32|float16|bfloat16")
+    parser.add_argument("--seed", type=int, default=42, help="RNG seed for weight init. The data order is deterministic regardless (the dataset is not shuffled), so this is the only source of run-to-run variation")
     # Checkpoint Arguments
     parser.add_argument("--checkpoint", type=str, default=None, help="path to the checkpoint to load from")
     parser.add_argument("--checkpoint_args", action=argparse.BooleanOptionalAction, help="load args from the checkpoint")
     parser.add_argument("--reset_steps", action=argparse.BooleanOptionalAction, help="reset the steps in the checkpoint to 0 (affect lr scheduling)")
+    parser.add_argument("--reset_data", action=argparse.BooleanOptionalAction, help="when resuming from a checkpoint, restart the data stream from the first shard instead of fast-forwarding to the checkpoint step (needed when the previous run already consumed the dataset)")
 
     args = parser.parse_args()
 
@@ -207,7 +214,7 @@ if __name__ == "__main__":
     # assert args.model_size in {"l6", "l8", "l12", "l15", "l18", "l24"}
     assert args.position_encoding in {"rotary", "rotary_ssmax", "sinusoidal", "sinusoidal_ssmax", 
                                       "alibi", "alibi_ssmax", "bam", "bam_ssmax", "nope", "nope_ssmax", 
-                                      "cabam", "dape_alibi"}
+                                      "cabam", "dape_alibi", "cope"}
     # assert only one of min_tokens_per_step, tokens_per_step, max_tokens_per_step is set
     assert sum([args.min_tokens_per_step is not None, 
                 args.tokens_per_step is not None, 
@@ -281,9 +288,9 @@ if __name__ == "__main__":
     ctx = torch.autocast(device_type=device_type, dtype=ptdtype) if (device_type == "cuda") else nullcontext()
 
     # rng / reproducibility
-    torch.manual_seed(42)
+    torch.manual_seed(args.seed)
     if torch.cuda.is_available():
-        torch.cuda.manual_seed(42)
+        torch.cuda.manual_seed(args.seed)
 
     # set the torch precision mode to use TensorFloat32 (TF32) for matmuls
     # docs https://pytorch.org/docs/stable/generated/torch.set_float32_matmul_precision.html
@@ -304,6 +311,7 @@ if __name__ == "__main__":
         "nope_ssmax":       (NoPESSMaxModelArgs,    NoPESSMaxTransformer         ),
         "cabam":            (CABAMModelArgs,        CABAMTransformer             ),
         "dape_alibi":       (DAPEALiBiModelArgs,    DAPEALiBiTransformer         ),
+        "cope":             (CoPEModelArgs,         CoPETransformer              ),
     }[args.position_encoding]
 
     # init the model
@@ -336,6 +344,10 @@ if __name__ == "__main__":
         model_config.global_positional_encoding = args.global_prior
     if "ssmax" in args.position_encoding:
         model_config.seq_scale = not args.no_seq_scale
+    if args.position_encoding == "cope":
+        model_config.cope_npos_max = args.cope_npos_max
+        model_config.cope_gate_mode = args.cope_gate_mode
+        model_config.cope_share_layers = not args.cope_no_share_layers
 
     model = Transformer(model_config)
     if args.checkpoint is not None:
@@ -410,8 +422,25 @@ if __name__ == "__main__":
         print0(f"Loading optimizer state from checkpoint {args.checkpoint}")
         optimizer_path = os.path.join(args.checkpoint, "optimizer.pt")
         opt_dict = torch.load(optimizer_path, map_location='cpu')
+
+        # load_state_dict restores the SAVED param_group hyperparameters on top
+        # of the ones we just built, so init_lr/lr/weight_decay silently revert
+        # to whatever the checkpointed run used and this run's --learning_rate,
+        # --prior_lr and --weight_decay are ignored (set_lr schedules off
+        # init_lr, so the whole LR curve comes from the old run). Keep the
+        # optimizer STATE (moments, step count) but re-apply this run's
+        # hyperparameters. For a plain resume these are identical, so nothing
+        # changes; it only matters for fine-tuning at a different LR.
+        intended_groups = [{'init_lr': g['init_lr'], 'lr': g['lr'], 'weight_decay': g['weight_decay']}
+                           for g in optimizer.param_groups]
         optimizer.load_state_dict(opt_dict)
-        
+        for group, intended in zip(optimizer.param_groups, intended_groups):
+            group.update(intended)
+        print0(f"Optimizer hyperparameters set from this run's args: "
+               f"init_lr={[g['init_lr'] for g in optimizer.param_groups]}, "
+               f"weight_decay={[g['weight_decay'] for g in optimizer.param_groups]}")
+
+
         for key in opt_dict['state']:
             if checkpoint_step == -1:
                 checkpoint_step = opt_dict['state'][key]['step']
@@ -425,6 +454,18 @@ if __name__ == "__main__":
     if args.reset_steps and (args.checkpoint is not None):
         step_correction = checkpoint_step if checkpoint_step >= 0 else 0
         # num_iterations += step_correction
+
+    # How many steps of the data stream to fast-forward past before training.
+    # Normally this is the checkpoint's step, so a resumed run picks up the
+    # data exactly where it stopped. That only works while the dataset still
+    # has unseen tokens left: a full pretraining run consumes essentially all
+    # of FineWeb 10B, so a short fine-tune appended to it would hit
+    # StopIteration mid-run. --reset_data restarts the stream from shard 0
+    # instead (validation tokens stay excluded either way, see
+    # DistributedShardedDataset.reset).
+    data_start_step = 0 if args.reset_data else checkpoint_step
+    if args.reset_data and (args.checkpoint is not None):
+        print0(f"--reset_data: restarting the data stream from shard 0 (checkpoint step was {checkpoint_step})")
 
 
     # learning rate decay scheduler (cosine with warmup)
@@ -455,7 +496,7 @@ if __name__ == "__main__":
                             
     # for step in range(args.num_iterations + 1):
     for step, batches in enumerate(train_loader):
-        if step < checkpoint_step:
+        if step < data_start_step:
             continue
 
         t0 = time.time()

@@ -4,7 +4,7 @@ import os
 parser = argparse.ArgumentParser()
 parser.add_argument("--gpu", type=int, default=4, help="índice da GPU a usar")
 parser.add_argument("--models", nargs="+", default=["rotary_ssmax_wo_fa", "bam_wo_fa", "cabam_wo_fa", "dape"],
-                    choices=["bam", "cabam", "dape", "bam_wo_fa", "cabam_wo_fa", "rotary_ssmax_wo_fa"],
+                    choices=["bam", "cabam", "dape", "cope", "bam_wo_fa", "cabam_wo_fa", "rotary_ssmax_wo_fa"],
                     help="modelos a benchmarkar (ex: --models bam cabam)")
 parser.add_argument("--seq_len", type=int, default=2048)
 parser.add_argument("--batch_size", type=int, default=4)
@@ -98,6 +98,9 @@ def main():
     if "dape" in args.models:
         from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
         registry["dape"] = ("DAPE ALiBi", DAPEALiBiModelArgs, DAPEALiBiTransformer)
+    if "cope" in args.models:
+        from models.cope import CoPETransformer, CoPEModelArgs
+        registry["cope"] = ("CoPE", CoPEModelArgs, CoPETransformer)
     if "bam_wo_fa" in args.models:
         from models.bam_ssmax_wo_fa import SSMaxBATransformer, SSMaxBATModelArgs
         registry["bam_wo_fa"] = ("BAM SSMax (sem FA)", SSMaxBATModelArgs, SSMaxBATransformer)
