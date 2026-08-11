@@ -29,6 +29,7 @@ class CoPEModelArgs:
     #            na Table 8, ao custo de +1 projecao por camada
     cope_gate_mode: str = "attn"
     cope_share_layers: bool = True   # embeddings de posicao compartilhados entre camadas (default do paper)
+    grad_checkpoint: bool = False    # recomputa ativacoes por camada no backward (troca compute por memoria)
 
 
 class RMSNorm(torch.nn.Module):
@@ -281,6 +282,8 @@ class CoPETransformer(nn.Module):
         head_dim = params.dim // params.n_heads
         self.cope = CoPE(params.cope_npos_max, head_dim) if params.cope_share_layers else None
 
+        self.grad_checkpoint = getattr(params, "grad_checkpoint", False)
+
     def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None):
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
@@ -302,7 +305,18 @@ class CoPETransformer(nn.Module):
             mask = mask.type_as(h)
 
         for layer in self.layers:
-            h = layer(h, mask, self.cope)
+            if self.grad_checkpoint and self.training:
+                # Recomputa as ativacoes da camada no backward em vez de
+                # guarda-las. Matematicamente identico -- e recomputacao,
+                # nao aproximacao. Necessario aqui porque o CoPE guarda
+                # varios tensores [b, h, T, T] por camada, dos quais dois
+                # sao int64 (os indices de gather de pos_ceil/pos_floor),
+                # o que estoura os 24 GiB da GPU mesmo com batch pequeno.
+                h = torch.utils.checkpoint.checkpoint(
+                    layer, h, mask, self.cope, use_reentrant=False
+                )
+            else:
+                h = layer(h, mask, self.cope)
 
         h = self.norm(h)
         output = self.output(h).float()

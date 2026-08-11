@@ -13,6 +13,7 @@ from .alibi_wo_fa import ALiBiModelArgs, RMSNorm, FeedForward, repeat_kv
 @dataclass
 class DAPEALiBiModelArgs(ALiBiModelArgs):
     dape_mlp_width: int = 32  # Dimensão oculta do MLP (paper recomenda = n_heads)
+    grad_checkpoint: bool = False  # recomputa ativações por camada no backward (troca compute por memória)
 
 
 # ---------------------------------------------------------------------------
@@ -190,6 +191,8 @@ class DAPEALiBiTransformer(nn.Module):
             persistent=False,
         )
 
+        self.grad_checkpoint = getattr(params, "grad_checkpoint", False)
+
     def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None):
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
@@ -218,7 +221,17 @@ class DAPEALiBiTransformer(nn.Module):
             alibi_bias = alibi_bias.type_as(h)
 
         for layer in self.layers:
-            h = layer(h, mask, alibi_bias)
+            if self.grad_checkpoint and self.training:
+                # Recomputa as ativações da camada no backward em vez de
+                # guardá-las. Matematicamente idêntico — é recomputação,
+                # não aproximação. Necessário aqui porque o DAPE aplica um
+                # MLP sobre tensores [b, h, T, T] e guarda os intermediários
+                # de todas as 12 camadas.
+                h = torch.utils.checkpoint.checkpoint(
+                    layer, h, mask, alibi_bias, use_reentrant=False
+                )
+            else:
+                h = layer(h, mask, alibi_bias)
 
         h = self.norm(h)
         return self.output(h).float()

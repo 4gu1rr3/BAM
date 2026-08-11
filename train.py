@@ -152,6 +152,10 @@ if __name__ == "__main__":
     parser.add_argument("--cope_npos_max", type=int, default=64, help="maximum contextual position p_max for CoPE (paper uses 64 for a 1024 context)")
     parser.add_argument("--cope_gate_mode", type=str, default="attn", choices=["attn", "sep_keys"], help="how CoPE computes its gates: reuse the attention logits (attn, the paper's headline config and the only param-matched one) or a dedicated key projection (sep_keys, best PPL in the paper's Table 8 but adds one projection per layer)")
     parser.add_argument("--cope_no_share_layers", action=argparse.BooleanOptionalAction, help="give each layer its own CoPE position embeddings instead of sharing them across layers")
+    # DAPE arguments
+    parser.add_argument("--dape_mlp_width", type=int, default=32, help="hidden width of DAPE's 2-layer LeakyReLU MLP. The paper sets D_DAPE to the number of attention heads (16 for l12); the default 32 here predates that check and is kept only so existing runs stay reproducible")
+    # Memory/compute trade-off, currently wired for cope and dape_alibi only
+    parser.add_argument("--grad_checkpoint", action=argparse.BooleanOptionalAction, help="recompute each layer's activations during the backward pass instead of storing them. Mathematically identical (pure recomputation), costs ~30%% wall clock, and cuts activation memory by roughly the layer count. Needed by cope/dape_alibi, which keep several [b, h, T, T] tensors per layer and do not fit in 24 GiB otherwise")
     # token layout for each step of the optimization
     parser.add_argument("--batch_size", type=int, default=4, help="batch size, in units of #batch dimensions")
     parser.add_argument("--sequence_length", type=int, default=64, help="sequence length")
@@ -163,7 +167,7 @@ if __name__ == "__main__":
     # optimization
     parser.add_argument("--learning_rate", type=float, default=1e-4, help="learning rate warmup iterations")
     parser.add_argument("--warmup_iters", type=int, default=0, help="learning rate warmup iterations, not needed due to the use of RAdam optimizer")
-    parser.add_argument("--learning_rate_decay_frac", type=float, default=1.0, help="learning rate sinusoidal decay fraction, 0.1 means 10% of the initial learning rate at the end of training")
+    parser.add_argument("--learning_rate_decay_frac", type=float, default=1.0, help="learning rate sinusoidal decay fraction, 0.1 means 10%% of the initial learning rate at the end of training")
     parser.add_argument("--weight_decay", type=float, default=0.0, help="weight decay")
     parser.add_argument("--grad_clip", type=float, default=1.0, help="maximum gradient magnitude")
     # evaluation
@@ -309,7 +313,7 @@ if __name__ == "__main__":
         "bam_ssmax":        (SSMaxBATModelArgs,     SSMaxBATransformer           ),
         "nope":             (NoPEModelArgs,         NoPETransformer              ),
         "nope_ssmax":       (NoPESSMaxModelArgs,    NoPESSMaxTransformer         ),
-        "cabam":            (CABAMModelArgs,        CABAMTransformer             ),
+        "cabam_ssmax":      (CABAMModelArgs,        CABAMTransformer             ),
         "dape_alibi":       (DAPEALiBiModelArgs,    DAPEALiBiTransformer         ),
         "cope":             (CoPEModelArgs,         CoPETransformer              ),
     }[args.position_encoding]
@@ -344,6 +348,10 @@ if __name__ == "__main__":
         model_config.global_positional_encoding = args.global_prior
     if "ssmax" in args.position_encoding:
         model_config.seq_scale = not args.no_seq_scale
+    if args.position_encoding in {"cope", "dape_alibi"}:
+        model_config.grad_checkpoint = bool(args.grad_checkpoint)
+    if args.position_encoding == "dape_alibi":
+        model_config.dape_mlp_width = args.dape_mlp_width
     if args.position_encoding == "cope":
         model_config.cope_npos_max = args.cope_npos_max
         model_config.cope_gate_mode = args.cope_gate_mode
