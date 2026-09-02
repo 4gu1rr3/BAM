@@ -1,4 +1,6 @@
-"""Plota o que o collect_prior_stats.py coletou:
+"""Plota o que o collect_prior_stats.py coletou (script apagado em
+02/09/2026 junto com o forward_chunk; para recoletar,
+`git show dbab72a:collect_prior_stats.py`):
 
   1) densidade de beta por head (heatmap: uma linha por head, 192 no total)
   2) como as estatisticas mudam com o comprimento da sequencia

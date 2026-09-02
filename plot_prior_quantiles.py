@@ -23,7 +23,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 
-from collect_prior_stats import quantiles_from_hist
+# Vinha do collect_prior_stats.py, apagado em 02/09/2026 junto com o
+# caminho de KV-cache em chunks (ele so sabia alimentar o modelo por
+# model.forward_chunk(), que nao existe mais). Copiado para ca sem
+# alteracao para que este script continue rodando sobre os .pt ja
+# coletados -- prior_seg16k.pt e prior_stats_login.pt.
+def quantiles_from_hist(hist, edges, qs=(0.01, 0.05, 0.25, 0.5, 0.75, 0.95, 0.99)):
+    """Quantis aproximados a partir do histograma (interpolacao linear no bin)."""
+    centers = (edges[:-1] + edges[1:]) / 2
+    cdf = hist.cumsum(-1)
+    total = cdf[..., -1:].clamp_min(1e-9)
+    cdf = cdf / total
+    out = []
+    for q in qs:
+        idx = (cdf < q).sum(-1).clamp(max=hist.shape[-1] - 1)
+        out.append(centers[idx])
+    return torch.stack(out, dim=-1)
 
 QS = (0.10, 0.25, 0.50, 0.75, 0.90)
 C_MED = "#5a108b"
@@ -73,8 +88,9 @@ def main():
     length = args.length or max(runs)
     res = runs[length]
     if "seg_hist" not in res:
-        raise SystemExit("esse arquivo foi coletado antes do --segments; "
-                         "rode o collect_prior_stats.py de novo")
+        raise SystemExit("esse arquivo foi coletado antes do --segments, e o "
+                         "collect_prior_stats.py que o gerava foi apagado em "
+                         "02/09/2026 -- recupere com: git show dbab72a:collect_prior_stats.py")
 
     bins = d["meta"]["beta_bins"]
     seg = res["seg_hist"]                       # (L, H, S, bins)
