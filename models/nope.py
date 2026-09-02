@@ -163,7 +163,8 @@ class NoPETransformer(nn.Module):
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
         self.output = nn.Linear(params.dim, params.vocab_size, bias=False)
 
-    def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None):
+    def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None,
+                return_hidden: bool = False):
         bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
 
@@ -177,5 +178,13 @@ class NoPETransformer(nn.Module):
         for layer in self.layers:
             h = layer(h, mask)
         h = self.norm(h)
+        # return_hidden: devolve o estado escondido [b, T, dim] em vez dos
+        # logits [b, T, vocab]. Em 512k os logits em fp32 sao 64 GiB (vocab
+        # 32768 x 4 bytes por posicao) e nenhum forward cabe na placa; o
+        # estado escondido nos mesmos 512k e 1,6 GiB. Quem chama projeta em
+        # blocos de posicoes e reduz na hora (argmax no passkey, cross
+        # entropy na perplexidade), ver eval_utils. Sem a flag, nada muda.
+        if return_hidden:
+            return h
         output = self.output(h).float()
         return output

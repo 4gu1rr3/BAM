@@ -178,65 +178,6 @@ class BayesianAttention(nn.Module):
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
         return self.wo(output)
 
-    def forward_cached(
-        self,
-        x: torch.Tensor,
-        mask: Optional[torch.Tensor],
-        section_log_len: torch.Tensor,
-        start_pos_t: torch.Tensor,
-        kv_cache: Optional[dict],
-    ):
-        # Chunked-prefill counterpart of forward(): x holds only the current
-        # chunk of queries; keys/values from prior chunks are carried in
-        # kv_cache and concatenated here. Unlike forward()'s prior[h,
-        # seqlen-1+kv_idx-q_idx] table lookup (only valid when kv_idx-q_idx
-        # stays within +-(seqlen-1)), a KV-cache spans the whole context, so
-        # the offset can be far outside that range. BAM's prior has no
-        # content-conditioning (unlike CABAM), so it's just the closed-form
-        # GGD bias evaluated directly per (head, q_idx, kv_idx) -- same
-        # formula as AttentionPrior.forward(), just not table-indexed.
-        bsz, seqlen, _ = x.shape
-        queries, keys, values = self.wq(x), self.wk(x), self.wv(x)
-
-        queries = queries.view(bsz, seqlen, self.n_local_heads, self.head_dim)
-        keys = keys.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-        values = values.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
-
-        keys = repeat_kv(keys, self.n_rep)
-        values = repeat_kv(values, self.n_rep)
-
-        queries = queries.transpose(1, 2)  # (bs, n_local_heads, C, head_dim)
-        keys = keys.transpose(1, 2)        # (bs, n_local_heads, C, head_dim)
-        values = values.transpose(1, 2)
-
-        if kv_cache is None:
-            k_full, v_full = keys, values
-        else:
-            k_full = torch.cat([kv_cache['k'], keys], dim=2)
-            v_full = torch.cat([kv_cache['v'], values], dim=2)
-        new_kv_cache = {'k': k_full, 'v': v_full}
-
-        ssmax_mul = section_log_len * self.seq_scale
-        theta_alpha = self.prior.theta_alpha.exp().view(-1)  # (n_heads,)
-        theta_beta = self.prior.theta_beta.view(-1)
-        theta_mu = self.prior.theta_mu.view(-1)
-        mu = theta_mu.exp() - (-theta_mu).exp()
-        eps = self.prior.eps
-
-        theta_alpha, theta_beta, mu, ssmax_mul = _materialize(theta_alpha, theta_beta, mu, ssmax_mul)
-
-        def score_mod(score, b, h, q_idx, kv_idx):
-            abs_q_idx = start_pos_t + q_idx
-            b_pos = kv_idx - abs_q_idx - mu[h]
-            prior = -((b_pos.abs() + eps) ** theta_beta[h]) * theta_alpha[h]
-            score = score + prior
-            return score * ssmax_mul[b, h, q_idx]
-
-        output = flex_attention(queries, k_full, v_full, score_mod=score_mod, block_mask=mask)
-
-        output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
-        return self.wo(output), new_kv_cache
-
 
 class FeedForward(nn.Module):
     def __init__(
@@ -287,19 +228,6 @@ class TransformerBlock(nn.Module):
         h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len)
         out = h + self.feed_forward(self.ffn_norm(h))
         return out
-
-    def forward_cached(
-        self,
-        x: torch.Tensor,
-        mask: Optional[torch.Tensor],
-        section_log_len: torch.Tensor,
-        start_pos_t: torch.Tensor,
-        kv_cache: Optional[dict],
-    ):
-        attn_out, new_kv_cache = self.attention.forward_cached(self.attention_norm(x), mask, section_log_len, start_pos_t, kv_cache)
-        h = x + attn_out
-        out = h + self.feed_forward(self.ffn_norm(h))
-        return out, new_kv_cache
 
 class SSMaxBATransformer(nn.Module):
     def __init__(self, params: SSMaxBATModelArgs):
@@ -356,44 +284,3 @@ class SSMaxBATransformer(nn.Module):
         h = self.norm(h)
         output = self.output(h).float()
         return output
-
-    def forward_chunk(
-        self,
-        tokens: torch.Tensor,
-        start_pos: int,
-        kv_caches: list,
-        compute_logits: bool,
-        logits_tail: Optional[int] = None,
-    ):
-        # Chunked-prefill path for evaluating sequences too long to run in a
-        # single forward(): processes one chunk of `tokens` against a
-        # per-layer KV cache carried across calls (see forward_cached above
-        # for the position-offset math). Only meant for single-document
-        # (seq_codes=None), local-positional-encoding inference; skips the
-        # vocab projection unless compute_logits, since materializing
-        # logits for every chunk (not just the one we need) is what caused
-        # the OOMs at ~123k tokens in the non-chunked path.
-        bsz, seqlen = tokens.shape
-        device = tokens.device
-        h = self.tok_embeddings(tokens)
-
-        start_pos_t = torch.tensor(start_pos, device=device)
-        positions_log = torch.arange(start_pos + 1, start_pos + seqlen + 1, device=device, dtype=torch.float32).log()
-        section_log_len = positions_log.unsqueeze(0).unsqueeze(0).repeat(bsz, 1, 1)
-
-        total_len = start_pos + seqlen
-
-        def mask_mod(b, h, q_idx, kv_idx):
-            return kv_idx <= (start_pos_t + q_idx)
-        mask = create_block_mask(mask_mod, B=bsz, H=None, Q_LEN=seqlen, KV_LEN=total_len, device=device, BLOCK_SIZE=128)
-
-        for layer_id, layer in enumerate(self.layers):
-            h, kv_caches[layer_id] = layer.forward_cached(h, mask, section_log_len, start_pos_t, kv_caches[layer_id])
-
-        if compute_logits:
-            if logits_tail is not None:
-                h = h[:, -logits_tail:]
-            h = self.norm(h)
-            output = self.output(h).float()
-            return output, kv_caches
-        return None, kv_caches

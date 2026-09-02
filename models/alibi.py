@@ -171,7 +171,8 @@ class ALiBiTransformer(nn.Module):
         slopes = self.get_slopes(params.n_heads)
         self.register_buffer("slopes", torch.tensor(slopes).reshape(params.n_heads), persistent=False)
 
-    def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None):
+    def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None,
+                return_hidden: bool = False):
         bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
         
@@ -185,6 +186,9 @@ class ALiBiTransformer(nn.Module):
         for layer in self.layers:
             h = layer(h, mask, self.slopes)
         h = self.norm(h)
+        
+        if return_hidden:
+            return h
         output = self.output(h).float()
         return output
     

@@ -8,12 +8,17 @@ import torch.nn.functional as F
 from einops import rearrange
 
 from .alibi_wo_fa import ALiBiModelArgs, RMSNorm, FeedForward, repeat_kv
+from .chunked_attn import plan_if_chunked
 
 
 @dataclass
 class DAPEALiBiModelArgs(ALiBiModelArgs):
     dape_mlp_width: int = 32  # Dimensão oculta do MLP (paper recomenda = n_heads)
     grad_checkpoint: bool = False  # recomputa ativações por camada no backward (troca compute por memória)
+    # Bloco de linhas da atenção no forward de inferência. 0 = desligado
+    # (matriz [b, h, T, T] inteira, comportamento histórico). Ver
+    # models/chunked_attn.py. Não tem efeito sob autograd.
+    attn_chunk: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -101,7 +106,11 @@ class DAPEALiBiAttention(nn.Module):
         x: torch.Tensor,
         mask: Optional[torch.Tensor],        # máscara causal aditiva
         alibi_bias: Optional[torch.Tensor],  # [1, n_heads, seqlen, seqlen]
+        plan=None,                           # ChunkedCausalPlan, só na inferência
     ) -> torch.Tensor:
+        if plan is not None:
+            return self._forward_chunked(x, plan)
+
         bsz, seqlen, _ = x.shape
 
         queries, keys, values = self.wq(x), self.wk(x), self.wv(x)
@@ -134,6 +143,61 @@ class DAPEALiBiAttention(nn.Module):
         return self.wo(output)
 
 
+    def _forward_chunked(self, x: torch.Tensor, plan) -> torch.Tensor:
+        """Mesma matemática do forward acima, um bloco de linhas por vez.
+
+        O MLP do DAPE é pontual em (i, j) — opera na dimensão das cabeças —
+        e o softmax é por linha, então as linhas [i0, i1) podem ser
+        processadas isoladamente. Por causalidade o bloco só precisa de
+        K/V[0:i1].
+
+        Ganho extra sobre o caminho original: o bias ALiBi deixa de ser um
+        tensor [1, n_heads, T, T] construído uma vez e compartilhado pelas
+        camadas (17 GiB em fp32 a 16k) e passa a ser uma fatia por bloco.
+        """
+        bsz, seqlen, _ = x.shape
+
+        queries, keys, values = self.wq(x), self.wk(x), self.wv(x)
+
+        queries = queries.view(bsz, seqlen, self.n_local_heads, self.head_dim).transpose(1, 2)
+        keys    = keys.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        values  = values.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+
+        keys   = repeat_kv(keys, self.n_rep).transpose(1, 2)
+        values = repeat_kv(values, self.n_rep).transpose(1, 2)
+
+        out = None
+        for i0, i1 in plan.chunks():
+            q = queries[:, :, i0:i1]
+            k = keys[:, :, :i1]
+            v = values[:, :, :i1]
+
+            alibi_bias = plan.alibi(i0, i1)
+            mask = plan.mask(i0, i1)
+
+            qk_t = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.head_dim)
+            scores = qk_t + self.dape(qk_t, alibi_bias)
+            scores = scores + alibi_bias
+            scores = scores + mask
+
+            scores = F.softmax(scores.float(), dim=-1).type_as(queries)
+            chunk_out = torch.matmul(scores, v)
+
+            if out is None:
+                out = torch.empty(
+                    bsz, self.n_local_heads, seqlen, self.head_dim,
+                    dtype=chunk_out.dtype, device=chunk_out.device,
+                )
+            out[:, :, i0:i1] = chunk_out
+
+            # Solta os tensores do bloco antes de alocar os do próximo, senão
+            # o pico fica em dois blocos em vez de um.
+            del qk_t, scores, chunk_out, alibi_bias, mask
+
+        out = out.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
+        return self.wo(out)
+
+
 # ---------------------------------------------------------------------------
 # TransformerBlock
 # ---------------------------------------------------------------------------
@@ -157,8 +221,9 @@ class DAPETransformerBlock(nn.Module):
         x: torch.Tensor,
         mask: Optional[torch.Tensor],
         alibi_bias: Optional[torch.Tensor],
+        plan=None,
     ) -> torch.Tensor:
-        h = x + self.attention(self.attention_norm(x), mask, alibi_bias)
+        h = x + self.attention(self.attention_norm(x), mask, alibi_bias, plan)
         out = h + self.feed_forward(self.ffn_norm(h))
         return out
 
@@ -192,10 +257,27 @@ class DAPEALiBiTransformer(nn.Module):
         )
 
         self.grad_checkpoint = getattr(params, "grad_checkpoint", False)
+        # Sobrescrevível na instância carregada (model.attn_chunk = N) para
+        # não depender do args.json de checkpoints já treinados.
+        self.attn_chunk = getattr(params, "attn_chunk", 0)
+        # 0 = so o bloco fixo acima decide; >0 = bloco automatico por comprimento.
+        self.attn_ref_len = getattr(params, "attn_ref_len", 0)
 
-    def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None):
+    def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None,
+                return_hidden: bool = False):
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
+
+        # Na inferência com chunking, nem a máscara [T, T] nem o bias ALiBi
+        # [1, n_heads, T, T] são materializados: o plano devolve fatias por bloco.
+        plan = plan_if_chunked(self, seqlen, h.dtype, tokens.device, seq_codes, self.slopes)
+        if plan is not None:
+            for layer in self.layers:
+                h = layer(h, None, None, plan)
+            h = self.norm(h)
+            if return_hidden:
+                return h
+            return self.output(h).float()
 
         mask = None
         alibi_bias = None
@@ -234,6 +316,14 @@ class DAPEALiBiTransformer(nn.Module):
                 h = layer(h, mask, alibi_bias)
 
         h = self.norm(h)
+        # return_hidden: devolve o estado escondido [b, T, dim] em vez dos
+        # logits [b, T, vocab]. Em 512k os logits em fp32 sao 64 GiB (vocab
+        # 32768 x 4 bytes por posicao) e nenhum forward cabe na placa; o
+        # estado escondido nos mesmos 512k e 1,6 GiB. Quem chama projeta em
+        # blocos de posicoes e reduz na hora (argmax no passkey, cross
+        # entropy na perplexidade), ver eval_utils. Sem a flag, nada muda.
+        if return_hidden:
+            return h
         return self.output(h).float()
 
     # Reutiliza a lógica de slopes do ALiBiTransformer

@@ -6,6 +6,8 @@ import torch
 from torch import nn
 import torch.nn.functional as F
 
+from .chunked_attn import plan_if_chunked
+
 
 @dataclass
 class CoPEModelArgs:
@@ -30,6 +32,10 @@ class CoPEModelArgs:
     cope_gate_mode: str = "attn"
     cope_share_layers: bool = True   # embeddings de posicao compartilhados entre camadas (default do paper)
     grad_checkpoint: bool = False    # recomputa ativacoes por camada no backward (troca compute por memoria)
+    # Bloco de linhas da atencao no forward de inferencia. 0 = desligado
+    # (matriz [b, h, T, T] inteira, comportamento historico). Ver
+    # models/chunked_attn.py. Nao tem efeito sob autograd.
+    attn_chunk: int = 0
 
 
 class RMSNorm(torch.nn.Module):
@@ -164,7 +170,11 @@ class Attention(nn.Module):
         x: torch.Tensor,
         mask: Optional[torch.Tensor],
         cope: Optional[CoPE],  # modulo compartilhado vindo do transformer
+        plan=None,             # ChunkedCausalPlan, so na inferencia
     ) -> torch.Tensor:
+        if plan is not None:
+            return self._forward_chunked(x, plan, cope)
+
         bsz, seqlen, _ = x.shape
 
         queries, keys, values = self.wq(x), self.wk(x), self.wv(x)
@@ -201,6 +211,74 @@ class Attention(nn.Module):
         output = torch.matmul(scores, values)
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
         return self.wo(output)
+
+
+    def _forward_chunked(self, x: torch.Tensor, plan, cope: Optional[CoPE]) -> torch.Tensor:
+        """Mesma matematica do forward acima, um bloco de linhas por vez.
+
+        Cada linha i e independente das outras: a cumsum reversa dos gates
+        roda dentro da linha e o softmax tambem, entao processar as linhas
+        [i0, i1) isoladamente da o mesmo resultado. Por causalidade o bloco
+        so precisa de K/V[0:i1] -- as chaves acima de i1-1 sao -inf para
+        todas as linhas do bloco e nao contribuem nem para o softmax nem
+        para a contagem de posicoes (sigmoid(-inf) = 0).
+        """
+        bsz, seqlen, _ = x.shape
+
+        queries, keys, values = self.wq(x), self.wk(x), self.wv(x)
+
+        queries = queries.view(bsz, seqlen, self.n_local_heads, self.head_dim).transpose(1, 2)
+        keys = keys.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+        values = values.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+
+        keys = repeat_kv(keys, self.n_rep).transpose(1, 2)
+        values = repeat_kv(values, self.n_rep).transpose(1, 2)
+
+        cope_module = self.cope if self.cope is not None else cope
+
+        gate_keys = None
+        if cope_module is not None and self.gate_mode == "sep_keys":
+            gate_keys = self.wg(x).view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
+            gate_keys = repeat_kv(gate_keys, self.n_rep).transpose(1, 2)
+
+        out = None
+        for i0, i1 in plan.chunks():
+            q = queries[:, :, i0:i1]
+            k = keys[:, :, :i1]
+            v = values[:, :, :i1]
+            mask = plan.mask(i0, i1)
+
+            scores = torch.matmul(q, k.transpose(2, 3)) / math.sqrt(self.head_dim)
+            scores = scores + mask
+
+            gate_logits = None
+            if cope_module is not None:
+                if self.gate_mode == "attn":
+                    gate_logits = scores
+                else:
+                    gate_logits = torch.matmul(
+                        q, gate_keys[:, :, :i1].transpose(2, 3)
+                    ) / math.sqrt(self.head_dim)
+                    gate_logits = gate_logits + mask
+
+                scores = scores + cope_module(q, gate_logits)
+
+            scores = F.softmax(scores.float(), dim=-1).type_as(queries)
+            chunk_out = torch.matmul(scores, v)
+
+            if out is None:
+                out = torch.empty(
+                    bsz, self.n_local_heads, seqlen, self.head_dim,
+                    dtype=chunk_out.dtype, device=chunk_out.device,
+                )
+            out[:, :, i0:i1] = chunk_out
+
+            # Solta a matriz do bloco antes de alocar a do proximo, senao o
+            # pico fica em dois blocos em vez de um.
+            del scores, chunk_out, mask, gate_logits
+
+        out = out.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
+        return self.wo(out)
 
 
 class FeedForward(nn.Module):
@@ -251,8 +329,9 @@ class TransformerBlock(nn.Module):
         x: torch.Tensor,
         mask: Optional[torch.Tensor],
         cope: Optional[CoPE],
+        plan=None,
     ) -> torch.Tensor:
-        h = x + self.attention(self.attention_norm(x), mask, cope)
+        h = x + self.attention(self.attention_norm(x), mask, cope, plan)
         out = h + self.feed_forward(self.ffn_norm(h))
         return out
 
@@ -283,10 +362,27 @@ class CoPETransformer(nn.Module):
         self.cope = CoPE(params.cope_npos_max, head_dim) if params.cope_share_layers else None
 
         self.grad_checkpoint = getattr(params, "grad_checkpoint", False)
+        # Sobrescrevivel na instancia carregada (model.attn_chunk = N) para
+        # nao depender de args.json de checkpoints ja treinados.
+        self.attn_chunk = getattr(params, "attn_chunk", 0)
+        # 0 = so o bloco fixo acima decide; >0 = bloco automatico por comprimento.
+        self.attn_ref_len = getattr(params, "attn_ref_len", 0)
 
-    def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None):
+    def forward(self, tokens: torch.Tensor, seq_codes: Optional[torch.Tensor] = None,
+                return_hidden: bool = False):
         _bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
+
+        # Na inferencia com chunking, a mascara [T, T] nunca e materializada:
+        # o plano devolve fatias [Tc, i1] por bloco.
+        plan = plan_if_chunked(self, seqlen, h.dtype, tokens.device, seq_codes)
+        if plan is not None:
+            for layer in self.layers:
+                h = layer(h, None, self.cope, plan)
+            h = self.norm(h)
+            if return_hidden:
+                return h
+            return self.output(h).float()
 
         mask = None
         if seqlen > 1:
@@ -319,5 +415,13 @@ class CoPETransformer(nn.Module):
                 h = layer(h, mask, self.cope)
 
         h = self.norm(h)
+        # return_hidden: devolve o estado escondido [b, T, dim] em vez dos
+        # logits [b, T, vocab]. Em 512k os logits em fp32 sao 64 GiB (vocab
+        # 32768 x 4 bytes por posicao) e nenhum forward cabe na placa; o
+        # estado escondido nos mesmos 512k e 1,6 GiB. Quem chama projeta em
+        # blocos de posicoes e reduz na hora (argmax no passkey, cross
+        # entropy na perplexidade), ver eval_utils. Sem a flag, nada muda.
+        if return_hidden:
+            return h
         output = self.output(h).float()
         return output
