@@ -34,8 +34,15 @@ from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
 from models.nope import NoPEModelArgs, NoPETransformer
 from models.nope_ssmax import NoPESSMaxModelArgs, NoPESSMaxTransformer
 from models.cabam_ssmax import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+from models.cabam_gated_ssmax import SSMaxBATransformer as CABAMGatedTransformer, SSMaxBATModelArgs as CABAMGatedModelArgs
+from models.cabam_wnorm_ssmax import SSMaxBATransformer as CABAMWNormTransformer, SSMaxBATModelArgs as CABAMWNormModelArgs
+from models.cabam_wnorm import SSMaxBATransformer as CABAMWNormNoSSTransformer, SSMaxBATModelArgs as CABAMWNormNoSSModelArgs
 from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
 from models.cope import CoPETransformer, CoPEModelArgs
+from models.cope_ssmax import CoPESSMaxTransformer, CoPESSMaxModelArgs
+from models.dape_alibi_ssmax import DAPEALiBiSSMaxTransformer, DAPEALiBiSSMaxModelArgs
+from models.dape_alibi_ssmax_pein import DAPEALiBiSSMaxPEInTransformer, DAPEALiBiSSMaxPEInModelArgs
+from models.dape_alibi_ssmax_pein import PROBE as _PEIN_PROBE
 
 from utils import print0, round_to_multiple, set_lr, compute_radam_lr, DistributedShardedDataset, StateMonitor
 ########################################################################################
@@ -135,7 +142,7 @@ if __name__ == "__main__":
     # file system input / output
     parser.add_argument("--dataset", type=str, default="10B", help="data/ directory containing the training data")
     parser.add_argument("--log_dir", type=str, default="logs", help="output directory to which to write logs and checkpoints")
-    parser.add_argument("--position_encoding", type=str, default="nope", help="nope|nope_ssmax|sinusoidal|sinusoidal_ssmax|rotary|rotary_ssmax|alibi|alibi_ssmax|bam|bam_ssmax|cabam|dape_alibi|cope")
+    parser.add_argument("--position_encoding", type=str, default="nope", help="nope|nope_ssmax|sinusoidal|sinusoidal_ssmax|rotary|rotary_ssmax|alibi|alibi_ssmax|bam|bam_ssmax|cabam|cabam_wnorm|cabam_wnorm_ssmax|dape_alibi|dape_alibi_ssmax|cope|cope_ssmax")
     parser.add_argument("--model_size", type=str, default="l12", help="l6|l8|l12|l15|l18|l24")
     # Bayesian Attention Mechanism arguments
     parser.add_argument("--global_prior", action=argparse.BooleanOptionalAction, help="whether to use a global prior for BAM")
@@ -147,6 +154,13 @@ if __name__ == "__main__":
     parser.add_argument("--theta_mu_trainable", type=int, default=0, help="trainable theta mu (location parameter - exp(theta_mu) - exp(-theta_mu)) for BAM")
     parser.add_argument("--prior_lr", type=float, default=None, help="specific learning rate for the BAM prior parameters, if not set, will use the learning rate")
     parser.add_argument("--prior_weight_decay", type=float, default=0.0, help="weight decay applied only to the BAM/CABAM prior parameters (theta_alpha/beta/mu or their MLP), pulls them back from numerically extreme regions")
+    parser.add_argument("--alpha_scale_init", type=float, default=1.3862943611198906, help="cabam_gated_ssmax: initial value of alpha's per-head ceiling (post-softplus). Default 2*softplus(0) makes alpha at init equal softplus(0)=0.6931, identical to plain CABAM. Measured operating range of alpha on l12/version_04 (--prior_weight_decay 20) was [0.21, 3.49]")
+    parser.add_argument("--beta_scale_init", type=float, default=0.0, help="cabam_gated_ssmax: initial value of beta's per-head scale, sign free. Default 0.0 keeps beta=0 at init, identical to plain CABAM -- note this also makes alpha's gradient exactly zero at step 0 (beta=0 => prior constant in kv => cancels in the softmax)")
+    parser.add_argument("--prior_scale_weight_decay", type=float, default=None, help="cabam_gated_ssmax: weight decay for the per-head prior scales only (alpha_scale/beta_scale), so their leash can be swept apart from the prior MLP's. Defaults to --prior_weight_decay")
+    parser.add_argument("--prior_gain_init", type=float, default=0.0, help="cabam_wnorm_ssmax: initial gain of the prior's NormLinear, one per (head, param). 0.0 reproduces plain CABAM's neutral init (alpha=softplus(0)=0.6931, beta=0, mu=0). The prior's MLP is a SINGLE NormLinear reading the attention_norm output directly, so the geometric ceiling it implies is |pre-activation| <= gain*sqrt(dim) = 27.71*gain at dim 768 (NOT sqrt(mlp_width): mlp_width is unused by this model); alpha's measured range on l12/version_04 (--prior_weight_decay 20) was [0.21, 3.49], i.e. |pre-activation| <~ 3.5, which corresponds to gain ~ 0.126")
+    parser.add_argument("--prior_dir_init", type=str, default="zeros", choices=["zeros", "randn", "orthogonal"], help="cabam_wnorm_ssmax: direction init of the prior's NormLinear. The row norm cancels in the forward, so this only picks directions; 'orthogonal' (unit rows, mutually orthogonal) spreads them most, 'randn' is unit-row in expectation, 'zeros' is the singularity of the parameterization -- with --prior_gain_init 0 both gradients vanish and the layer never leaves the origin.")
+    parser.add_argument("--prior_clamp", type=float, default=0.0, help="cabam_gated_ssmax: hard floor on the positional prior, clamp(prior, min=-PRIOR_CLAMP). Where the prior saturates the gradient wrt alpha is exactly zero, so alpha stops growing on its own instead of being held back by weight decay. 0 disables. On l12/version_04 ~40%% of (head,token) pairs reach below -30 at their farthest kv position")
+    parser.add_argument("--param_trace", type=str, default=None, help="diagnostico: arquivo .pt onde gravar, a cada step, o seq_scale por cabeca e a norma do gradiente por tensor (PRE-clip). Desligado por padrao")
     parser.add_argument("--no_seq_scale", action=argparse.BooleanOptionalAction, help="whether to disable the SSMax sequence scale in BAM")
     # Contextual Position Encoding (CoPE) arguments
     parser.add_argument("--cope_npos_max", type=int, default=64, help="maximum contextual position p_max for CoPE (paper uses 64 for a 1024 context)")
@@ -218,7 +232,9 @@ if __name__ == "__main__":
     # assert args.model_size in {"l6", "l8", "l12", "l15", "l18", "l24"}
     assert args.position_encoding in {"rotary", "rotary_ssmax", "sinusoidal", "sinusoidal_ssmax", 
                                       "alibi", "alibi_ssmax", "bam", "bam_ssmax", "nope", "nope_ssmax", 
-                                      "cabam", "dape_alibi", "cope"}
+                                      "cabam", "cabam_ssmax", "cabam_gated_ssmax", "cabam_wnorm_ssmax", "cabam_wnorm",
+                                      "dape_alibi", "cope",
+                                      "dape_alibi_ssmax", "cope_ssmax", "dape_alibi_ssmax_pein"}
     # assert only one of min_tokens_per_step, tokens_per_step, max_tokens_per_step is set
     assert sum([args.min_tokens_per_step is not None, 
                 args.tokens_per_step is not None, 
@@ -313,9 +329,16 @@ if __name__ == "__main__":
         "bam_ssmax":        (SSMaxBATModelArgs,     SSMaxBATransformer           ),
         "nope":             (NoPEModelArgs,         NoPETransformer              ),
         "nope_ssmax":       (NoPESSMaxModelArgs,    NoPESSMaxTransformer         ),
+        "cabam":            (CABAMModelArgs,        CABAMTransformer             ),
         "cabam_ssmax":      (CABAMModelArgs,        CABAMTransformer             ),
+        "cabam_gated_ssmax":(CABAMGatedModelArgs,   CABAMGatedTransformer        ),
+        "cabam_wnorm_ssmax":(CABAMWNormModelArgs,   CABAMWNormTransformer        ),
+        "cabam_wnorm":      (CABAMWNormNoSSModelArgs, CABAMWNormNoSSTransformer  ),
         "dape_alibi":       (DAPEALiBiModelArgs,    DAPEALiBiTransformer         ),
         "cope":             (CoPEModelArgs,         CoPETransformer              ),
+        "cope_ssmax":       (CoPESSMaxModelArgs,    CoPESSMaxTransformer         ),
+        "dape_alibi_ssmax": (DAPEALiBiSSMaxModelArgs, DAPEALiBiSSMaxTransformer  ),
+        "dape_alibi_ssmax_pein": (DAPEALiBiSSMaxPEInModelArgs, DAPEALiBiSSMaxPEInTransformer),
     }[args.position_encoding]
 
     # init the model
@@ -346,13 +369,20 @@ if __name__ == "__main__":
         model_config.train_theta_alpha = args.theta_alpha_trainable
         model_config.train_theta_mu = args.theta_mu_trainable
         model_config.global_positional_encoding = args.global_prior
+    if args.position_encoding in {"cabam_wnorm_ssmax", "cabam_wnorm"}:
+        model_config.prior_gain_init = args.prior_gain_init
+        model_config.prior_dir_init = args.prior_dir_init
+    if args.position_encoding == "cabam_gated_ssmax":
+        model_config.alpha_scale_init = args.alpha_scale_init
+        model_config.beta_scale_init = args.beta_scale_init
+        model_config.prior_clamp = args.prior_clamp
     if "ssmax" in args.position_encoding:
         model_config.seq_scale = not args.no_seq_scale
-    if args.position_encoding in {"cope", "dape_alibi"}:
+    if args.position_encoding in {"cope", "dape_alibi", "cope_ssmax", "dape_alibi_ssmax", "dape_alibi_ssmax_pein"}:
         model_config.grad_checkpoint = bool(args.grad_checkpoint)
-    if args.position_encoding == "dape_alibi":
+    if args.position_encoding in {"dape_alibi", "dape_alibi_ssmax", "dape_alibi_ssmax_pein"}:
         model_config.dape_mlp_width = args.dape_mlp_width
-    if args.position_encoding == "cope":
+    if args.position_encoding in {"cope", "cope_ssmax"}:
         model_config.cope_npos_max = args.cope_npos_max
         model_config.cope_gate_mode = args.cope_gate_mode
         model_config.cope_share_layers = not args.cope_no_share_layers
@@ -414,14 +444,26 @@ if __name__ == "__main__":
     #     {'params': [p for n, p in param_dict.items() if p.dim() < 2], 'weight_decay': 0.0}
     # ]
     param_dict = {pn: p for pn, p in model.named_parameters() if p.requires_grad}
+    _is_prior_scale = lambda n: n.endswith('alpha_scale') or n.endswith('beta_scale') or n.endswith('.gain')
+    _prior_scale_wd = args.prior_scale_weight_decay if args.prior_scale_weight_decay is not None else args.prior_weight_decay
+    _dirs = {id(m.weight) for m in model.modules() if type(m).__name__ == 'NormLinear'}
+    _is_dir = lambda p: id(p) in _dirs
+    _body  = lambda n: 'prior' not in n
     optim_groups = [
-        {'params': [p for n, p in param_dict.items() if p.squeeze().dim() >= 2 and 'prior' not in n], 'weight_decay': args.weight_decay,
+        {'params': [p for n, p in param_dict.items() if _body(n) and not _is_dir(p) and p.squeeze().dim() >= 2], 'weight_decay': args.weight_decay,
          'init_lr': args.learning_rate, 'lr': args.learning_rate},
-        {'params': [p for n, p in param_dict.items() if p.squeeze().dim() < 2  and 'prior' not in n], 'weight_decay': 0.0, 
+        {'params': [p for n, p in param_dict.items() if _body(n) and not _is_dir(p) and p.squeeze().dim() <  2], 'weight_decay': 0.0,
          'init_lr': args.learning_rate, 'lr': args.learning_rate},
-        {'params': [p for n, p in param_dict.items() if 'prior' in n], 'weight_decay': args.prior_weight_decay, 'lr': args.prior_lr,
+        {'params': [p for n, p in param_dict.items() if not _body(n) and not _is_dir(p) and not _is_prior_scale(n)], 'weight_decay': args.prior_weight_decay,
+         'init_lr': args.prior_lr, 'lr': args.prior_lr},
+        {'params': [p for n, p in param_dict.items() if not _body(n) and not _is_dir(p) and     _is_prior_scale(n)], 'weight_decay': _prior_scale_wd,
+         'init_lr': args.prior_lr, 'lr': args.prior_lr},
+        {'params': [p for n, p in param_dict.items() if _body(n)     and _is_dir(p)], 'weight_decay': 0.0,
+         'init_lr': args.learning_rate, 'lr': args.learning_rate},
+        {'params': [p for n, p in param_dict.items() if not _body(n) and _is_dir(p)], 'weight_decay': 0.0,
          'init_lr': args.prior_lr, 'lr': args.prior_lr},
     ]
+    optim_groups = [g for g in optim_groups if g['params']]
     optimizer = torch.optim.RAdam(optim_groups, betas=(0.9, 0.95), weight_decay=args.weight_decay, decoupled_weight_decay=True)
     # optimizer = torch.optim.AdamW(optim_groups, betas=(0.9, 0.95), weight_decay=args.weight_decay)
 
@@ -430,6 +472,14 @@ if __name__ == "__main__":
         print0(f"Loading optimizer state from checkpoint {args.checkpoint}")
         optimizer_path = os.path.join(args.checkpoint, "optimizer.pt")
         opt_dict = torch.load(optimizer_path, map_location='cpu')
+
+        if len(opt_dict['param_groups']) != len(optimizer.param_groups):
+            kept = [g for g in opt_dict['param_groups'] if g['params']]
+            if len(kept) == len(optimizer.param_groups):
+                print0(f"Checkpoint has {len(opt_dict['param_groups'])} optimizer param groups, "
+                       f"this run builds {len(optimizer.param_groups)}: dropping "
+                       f"{len(opt_dict['param_groups']) - len(kept)} empty group(s) from the checkpoint")
+                opt_dict['param_groups'] = kept
 
         # load_state_dict restores the SAVED param_group hyperparameters on top
         # of the ones we just built, so init_lr/lr/weight_decay silently revert
@@ -502,6 +552,9 @@ if __name__ == "__main__":
     # def __init__(self, args, dataset_args, model_args, model, rank=0):
     monitor0 = StateMonitor(args, dataset_args, model_config, raw_model, optimizer, step_correction, rank=ddp_rank)
                             
+    _ptrace = [] if (args.param_trace and ddp_rank == 0) else None
+    _probe_batch = None
+
     # for step in range(args.num_iterations + 1):
     for step, batches in enumerate(train_loader):
         if step < data_start_step:
@@ -579,8 +632,12 @@ if __name__ == "__main__":
         # micro-batch loop where we do gradient accumulation to reach desired total batch size
         lossf = 0.0 # for getting the mean loss (as simple float) over the accumulation steps
         stat_monitor.reset() # reset the BAM prior monitor for this step
+        _probe_rec = {} if _ptrace is not None else None
         for micro_step, (input_ids, seq_codes, targets) in enumerate(batches):
             input_ids, seq_codes, targets = input_ids.to(device), seq_codes.to(device), targets.to(device)
+            if _ptrace is not None and _probe_batch is None and micro_step == 0:
+                _probe_batch = (input_ids[:2].clone(), seq_codes[:2].clone(),
+                                targets[:2].clone())
             # input_ids, targets = input_ids.to(device), targets.to(device)
             if ddp:
                 # we want only the last micro-step to sync grads in a DDP model
@@ -617,6 +674,50 @@ if __name__ == "__main__":
             prior_grad_norm = prior_sq.sqrt()
             
             
+        if _ptrace is not None and _probe_batch is not None:
+            _pb_i, _pb_c, _pb_t = _probe_batch
+            _PEIN_PROBE["on"] = True
+            _PEIN_PROBE["rec"] = _probe_rec
+            try:
+                with ctx:
+                    _plogits = raw_model(_pb_i, seq_codes=_pb_c)
+                    _ploss = F.cross_entropy(_plogits.view(-1, _plogits.size(-1)),
+                                             _pb_t.view(-1), ignore_index=-1)
+                torch.autograd.grad(_ploss, [raw_model.tok_embeddings.weight])
+            except Exception as _e:
+                _probe_rec["erro"] = repr(_e)
+            finally:
+                _PEIN_PROBE["on"] = False
+                _PEIN_PROBE["rec"] = None
+                _plogits = _ploss = None
+
+        if _ptrace is not None:
+            with torch.no_grad():
+                _rec = {"step": step, "loss": lossf, "seq_scale": {}, "seq_scale_grad": {}, "grad_rms": {}}
+                _sq = 0.0
+                for _n, _p in raw_model.named_parameters():
+                    if _p.grad is None:
+                        continue
+                    _g = _p.grad.detach().float()
+                    _sq += float(_g.pow(2).sum())
+                    _rec["grad_rms"][_n] = float(_g.pow(2).mean().sqrt())
+                    if _n.endswith("seq_scale"):
+                        _rec["seq_scale"][_n] = _p.detach().float().reshape(-1).cpu().clone()
+                        _rec["seq_scale_grad"][_n] = _g.reshape(-1).cpu().clone()
+                _rec["total_grad_norm_preclip"] = _sq ** 0.5
+                _rec["probe"] = {k: dict(v) for k, v in (_probe_rec or {}).items()}
+                _rec["w_rms"] = {
+                    _n: float(_p.detach().float().pow(2).mean().sqrt())
+                    for _n, _p in raw_model.named_parameters()
+                    if ("dape.mlp" in _n or _n.endswith("seq_scale")
+                        or _n.endswith("wq.weight") or _n.endswith("wo.weight"))
+                }
+                _ptrace.append(_rec)
+            torch.save(_ptrace, args.param_trace)
+
+        _PEIN_PROBE["on"] = False
+        _PEIN_PROBE["rec"] = None
+
         norm = torch.nn.utils.clip_grad_norm_(model.parameters(), args.grad_clip)
         # # determine and set the learning rate for this iteration
         optimizer = set_lr(optimizer, step-step_correction, num_iterations, args)
@@ -641,6 +742,8 @@ if __name__ == "__main__":
             optimizer.step()
         else:
             print0("NaN Loss, Stop Training")
+            if _ptrace is not None:
+                torch.save(_ptrace, args.param_trace)
             break
 
         # --------------- TRAINING SECTION END -------------------

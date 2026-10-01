@@ -1,0 +1,59 @@
+Runs tiradas de logs_baselines/l12/ em 14/09/2026. Ficam FORA de logs*/ de
+proposito: e assim que o auto-resume do train_baselines.sh e o hf_push.sh
+param de enxergar estas pastas.
+
+alibi_ssmax_v00_bias_dentro
+    Job 947, 08-09/09/2026, 19225/19225 steps -- completo, mas treinado com
+    a convencao de SSMax ERRADA: softmax((q.k + alibi) * s * log n), bias
+    DENTRO do escalonamento. A convencao correta, decidida em 14/09/2026, e
+    bias FORA. Copia integral no HF (4gu1rr3/BAM-checkpoints), enviada em
+    09/09 12:25.
+
+dape_alibi_ssmax_v00_nan, _v01_nan
+    Jobs 954 e 955, 12/09/2026. Divergiram: grad norm -> inf no step 63,
+    nan no 88 de 19226. Pesos inuteis. Tambem no HF (12/09 19:26). Estavam
+    no caminho do auto-resume e faziam qualquer relancamento morrer no
+    primeiro step, porque a mudanca de formulacao nao altera o state_dict
+    e o checkpoint podre carrega sem erro.
+
+dape_alibi_ssmax_v00_cancelado_step89, _v01_resume_sujo
+    14/09/2026, ja com a formulacao nova (bias fora). A v00 (job 957) rodou
+    limpa ate o step 89 e foi cancelada por engano; o model.pt dela e de
+    ~17h da tarde, um step qualquer no meio do warmup, nao do step 89.
+    A v01 (job 958) e o resume automatico em cima dessa v00: carregou pesos
+    e estado do Adam de meio-warmup mas RESETOU o contador de steps e o
+    schedule de LR para 0. Nao e a receita -- descartada por isso, nao por
+    divergencia. Os 89 steps da v00 foram saudaveis (ver LEIA-ME acima).
+
+----------------------------------------------------------------------
+Nota de 21/09/2026 -- onde recuperar os .pt destas pastas
+
+As copias no backup do home (/home/malta01/backup_scratch/BAM/
+runs_descartados/) foram APAGADAS em 21/09/2026: 5.5GB de peso morto que
+tinham entrado por um exclude de rsync ancorado em logs*/ (ja corrigido em
+backup_scratch.sh). Os train.log / eval.log / args.json ficaram.
+
+Os .pt continuam aqui no scratch. Como o scratch e limpo periodicamente,
+segue de onde puxar no HF (4gu1rr3/BAM-checkpoints) se precisar. ATENCAO:
+estes runs foram enviados para os MESMOS paths que os runs novos usam hoje,
+entao no HEAD do repo esses paths ja apontam para os runs novos. Use a
+revision:
+
+  alibi_ssmax_v00_bias_dentro
+      revision 44581fc19b  (09/09/2026 15:25 UTC)
+      path     logs_baselines/l12/alibi_ssmax/version_00
+  dape_alibi_ssmax_v00_nan
+      revision a269070372  (12/09/2026 22:26 UTC)
+      path     logs_baselines/l12/dape_alibi_ssmax/version_00
+  dape_alibi_ssmax_v01_nan
+      revision 877738caab  (12/09/2026 22:26 UTC)
+      path     logs_baselines/l12/dape_alibi_ssmax/version_01
+
+  hf download 4gu1rr3/BAM-checkpoints --revision <rev> \
+      --include '<path>/*' --local-dir <destino>
+
+dape_alibi_ssmax_v00_cancelado_step89 NAO esta no HF: o commit mais recente
+do repo em 21/09/2026 era de 12/09 22:26, e esta pasta foi separada em 14/09.
+Os .pt dela existem so aqui no scratch. Pelo criterio do LEIA-ME acima o
+model.pt dela e um ponto qualquer do meio do warmup, nao o step 89 -- o que
+importa desse run e o train.log, que esta no backup do home.

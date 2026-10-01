@@ -10,13 +10,13 @@ from torch.nn.attention.flex_attention import create_block_mask
 
 
 @dataclass
-class BATModelArgs:
+class SSMaxBATModelArgs:
     dim: int = 1024
     n_layers: int = 32
     n_heads: int = 32
     n_kv_heads: Optional[int] = None
     vocab_size: int = 32768 
-    multiple_of: int = 1  # make SwiGLU hidden layer size multiple of large power of 2
+    multiple_of: int = 1
     ffn_dim_multiplier: Optional[float] = None
     norm_eps: float = 1e-5
     max_batch_size: int = 32
@@ -31,56 +31,84 @@ class BATModelArgs:
     train_theta_mu:   bool = False
 
     global_positional_encoding: bool = False
+    
+    mlp_width: int = 32
 
+    prior_gain_init: float = 0.0
+    prior_dir_init: str = "zeros"
 
 class RMSNorm(torch.nn.Module):
-    def __init__(self, dim: int, eps: float = 1e-6):
+    def __init__(self, dim: int, eps: float = 1e-6, affine: bool = True):
         super().__init__()
         self.eps = eps
-        self.weight = nn.Parameter(torch.ones(dim))
+        self.weight = nn.Parameter(torch.ones(dim)) if affine else None
 
     def _norm(self, x):
         return x * torch.rsqrt(x.pow(2).mean(-1, keepdim=True) + self.eps)
 
     def forward(self, x):
         output = self._norm(x.float()).type_as(x)
-        return output * self.weight
+        return output if self.weight is None else output * self.weight
+
+
+class NormLinear(nn.Module):
+    def __init__(self, d_in: int, d_out: int, bias: bool = False, gain_init: float = 1.0,
+                 dir_init: str = "zeros"):
+        super().__init__()
+        if dir_init == "zeros":
+            w = torch.zeros(d_out, d_in)
+        elif dir_init == "randn":
+            w = torch.randn(d_out, d_in) / d_in**0.5
+        elif dir_init == "orthogonal":
+            w = torch.empty(d_out, d_in)
+            nn.init.orthogonal_(w)
+            w = w / w.norm(dim=1, keepdim=True)
+        else:
+            raise ValueError(f"dir_init desconhecido: {dir_init!r} (zeros | randn | orthogonal)")
+        self.weight = nn.Parameter(w)
+        self.bias = nn.Parameter(torch.zeros(d_out)) if bias else None
+        self.gain = nn.Parameter(torch.full((d_out,), float(gain_init)))
+
+    def forward(self, x):
+        y = F.linear(x, self.weight, self.bias)
+        return self.gain * (y / self.weight.norm(dim=1).clamp_min(1e-6))
 
 class AttentionPrior(nn.Module):
-    def __init__(self, args: BATModelArgs):
+    def __init__(self, n_heads: int, dim: int, hidden_dim: int, train_theta_alpha: bool = True, train_theta_beta: bool = True, train_theta_mu: bool = False,
+                 prior_gain_init: float = 0.0, prior_dir_init: str = "zeros"):
         super().__init__()
-        self.seq_len = args.max_seq_len
-        self.n_heads = args.n_heads
         self.eps = 1e-5
+        self.train_theta_alpha = train_theta_alpha
+        self.train_theta_beta = train_theta_beta
+        self.train_theta_mu = train_theta_mu
+        self.n_heads = n_heads
+        self.hidden_dim = hidden_dim
+        self.dim = dim
+        self.mlp = nn.Sequential(
+            NormLinear(dim, 3*n_heads, bias=False, gain_init=prior_gain_init, dir_init=prior_dir_init),
+        )
+    
+    @torch.no_grad()
+    def prior_ceiling(self):
+        g = self.mlp[-1].gain.detach().float().view(self.n_heads, 3).abs()
+        y = g * self.dim**0.5
+        return F.softplus(y[:, 0]), y[:, 1], 2.0 * torch.sinh(y[:, 2])
 
-        
-        if args.theta_alpha_init == 'slope':
-            theta_alpha = torch.tensor(get_slopes(args.n_heads), dtype=torch.float).reshape(args.n_heads, 1)
-        elif args.theta_alpha_init == 'sampled':
-            theta_alpha = torch.randn((args.n_heads, 1), dtype=torch.float).exp()
-        else:
-            theta_alpha = torch.full((args.n_heads, 1), float(args.theta_alpha_init), dtype=torch.float)
-        
-        if args.train_theta_beta and args.thata_beta_init == 'linear':
-            theta_beta  = torch.linspace(0, 1, args.n_heads, dtype=torch.float).reshape(args.n_heads, 1)
-        elif args.train_theta_beta and args.thata_beta_init == 'sampled':
-            theta_beta  = torch.randn((args.n_heads, 1), dtype=torch.float)
-        elif args.train_theta_beta:
-            theta_beta   = torch.full((args.n_heads, 1), float(args.thata_beta_init), dtype=torch.float)
-        else:
-            theta_beta   = torch.ones((args.n_heads, 1), dtype=torch.float)
+    def forward(self, x:torch.Tensor) -> torch.Tensor:
 
-        theta_mu = torch.full((args.n_heads, 1), float(args.theta_mu_init),   dtype=torch.float)
-        
-        self.theta_beta  = nn.Parameter(theta_beta, requires_grad = args.train_theta_beta)
-        self.theta_alpha = nn.Parameter(theta_alpha, requires_grad = args.train_theta_alpha)
-        self.theta_mu    = nn.Parameter(theta_mu,   requires_grad = args.train_theta_mu)
+        bs, seqlen, dim = x.shape
 
-    def forward(self, seq_len=None):
-        seq_len = seq_len or self.seq_len
-        positions = torch.arange(1-seq_len, seq_len, device=self.theta_alpha.device).float()
-        b = positions - (self.theta_mu.exp() - (-self.theta_mu).exp())
-        return -((b.abs() + self.eps) ** self.theta_beta) * self.theta_alpha.exp() 
+        pos_emb = self.mlp(x)
+        pos_emb = pos_emb.view(bs, seqlen, self.n_heads, 3).transpose(1,2)
+
+        alpha_raw = pos_emb[..., 0] if self.train_theta_alpha else pos_emb[..., 0].detach()
+        # alpha = alpha_raw.exp()
+        alpha = F.softplus(alpha_raw)
+        beta = pos_emb[..., 1] if self.train_theta_beta else pos_emb[..., 1].detach()
+        mu_raw = pos_emb[..., 2] if self.train_theta_mu else pos_emb[..., 2].detach()
+        mu = mu_raw.exp() - mu_raw.neg().exp()
+
+        return (alpha, beta, mu)
 
 def get_slopes(n):
     def get_slopes_power_of_2(n):
@@ -89,9 +117,9 @@ def get_slopes(n):
         return [start*ratio**i for i in range(n)]
     
     if math.log2(n).is_integer():
-        return get_slopes_power_of_2(n)              #In the paper, we only train models that have 2^a heads for some a. This function has
-    else:                                                 #some good properties that only occur when the input is a power of 2. To maintain that even
-        closest_power_of_2 = 2**math.floor(math.log2(n))  #when the number of heads is not a power of 2, we use this workaround. 
+        return get_slopes_power_of_2(n)
+    else:
+        closest_power_of_2 = 2**math.floor(math.log2(n))
         return get_slopes_power_of_2(closest_power_of_2) + get_slopes(2*closest_power_of_2)[0::2][:n-closest_power_of_2]
 
 
@@ -106,9 +134,12 @@ def repeat_kv(x: torch.Tensor, n_rep: int) -> torch.Tensor:
         .reshape(bs, slen, n_kv_heads * n_rep, head_dim)
     )
 
+@torch.compiler.disable
+def _materialize(*tensors):
+    return tuple(t.contiguous() for t in tensors)
 
 class BayesianAttention(nn.Module):
-    def __init__(self, args: BATModelArgs):
+    def __init__(self, args: SSMaxBATModelArgs):
         super().__init__()
         self.n_kv_heads = args.n_heads if args.n_kv_heads is None else args.n_kv_heads
         self.n_local_heads = args.n_heads
@@ -123,13 +154,15 @@ class BayesianAttention(nn.Module):
 
         self.local_positional_encoding = not args.global_positional_encoding
         if self.local_positional_encoding:
-            self.prior = AttentionPrior(args)
+            self.prior = AttentionPrior(n_heads=args.n_heads, dim=args.dim, hidden_dim=args.mlp_width, train_theta_alpha=args.train_theta_alpha, train_theta_beta=args.train_theta_beta, train_theta_mu=args.train_theta_mu, prior_gain_init=args.prior_gain_init, prior_dir_init=args.prior_dir_init)
+
 
     def forward(
         self,
         x: torch.Tensor,
         mask: Optional[torch.Tensor],
-        global_prior: Optional[torch.Tensor],
+        global_prior: Optional[torch.Tensor] = None,
+        section_log_len: Optional[torch.Tensor] = None,
     ):
         bsz, seqlen, _ = x.shape
         queries, keys, values = self.wq(x), self.wk(x), self.wv(x)
@@ -138,29 +171,31 @@ class BayesianAttention(nn.Module):
         keys = keys.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
         values = values.view(bsz, seqlen, self.n_local_kv_heads, self.head_dim)
 
-        # repeat k/v heads if n_kv_heads < n_heads
-        keys = repeat_kv(keys, self.n_rep)      # (bs, seqlen, n_local_heads, head_dim)
-        values = repeat_kv(values, self.n_rep)  # (bs, seqlen, n_local_heads, head_dim)
+        keys = repeat_kv(keys, self.n_rep)
+        values = repeat_kv(values, self.n_rep)
 
-        queries = queries.transpose(1, 2)  # (bs, n_local_heads, seqlen, head_dim)
-        keys = keys.transpose(1, 2)  # (bs, n_local_heads, cache_len + seqlen, head_dim)
-        values = values.transpose(1, 2)  # (bs, n_local_heads, cache_len + seqlen, head_dim)
+        queries = queries.transpose(1, 2)
+        keys = keys.transpose(1, 2)
+        values = values.transpose(1, 2)
 
+        alpha_t, beta_t, mu_t = self.prior(x) if self.local_positional_encoding else global_prior
+        
+        alpha_t, beta_t, mu_t = _materialize(alpha_t, beta_t, mu_t)
 
-        prior = self.prior(seqlen) if self.local_positional_encoding else global_prior
         def score_mod(score, b, h, q_idx, kv_idx):
-            return score + prior[h, seqlen-1+kv_idx-q_idx]
+            alpha = alpha_t[b, h, q_idx]
+            beta = beta_t[b, h, q_idx]
+            mu = mu_t[b, h, q_idx]
 
-        output = flex_attention(queries, keys, values, score_mod=score_mod, block_mask=mask,
-                                kernel_options = {
-                                    "BLOCK_M":  32,
-                                    "BLOCK_N":  32,
-                                    "BLOCK_M1": 32,
-                                    "BLOCK_N1": 32,
-                                    "BLOCK_M2": 32,
-                                    "BLOCK_N2": 32,
-                                }
-                                )
+            b_pos = kv_idx - q_idx - mu
+            prior = -((b_pos.abs() + self.prior.eps) ** beta) * alpha
+            
+            prior = torch.nan_to_num(prior, nan=-50.0, posinf=-50.0, neginf=-50.0)
+
+            return score + prior
+
+
+        output = flex_attention(queries, keys, values, score_mod=score_mod, block_mask=mask)
 
         output = output.transpose(1, 2).contiguous().view(bsz, seqlen, -1)
         return self.wo(output)
@@ -175,7 +210,6 @@ class FeedForward(nn.Module):
         ffn_dim_multiplier: Optional[float],
     ):
         super().__init__()
-        # custom dim factor multiplier
         if ffn_dim_multiplier is not None:
             hidden_dim = int(ffn_dim_multiplier * hidden_dim)
         hidden_dim = multiple_of * ((hidden_dim + multiple_of - 1) // multiple_of)
@@ -189,7 +223,7 @@ class FeedForward(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    def __init__(self, layer_id: int, args: BATModelArgs):
+    def __init__(self, layer_id: int, args: SSMaxBATModelArgs):
         super().__init__()
         self.n_heads = args.n_heads
         self.dim = args.dim
@@ -209,21 +243,15 @@ class TransformerBlock(nn.Module):
         self,
         x: torch.Tensor,
         mask: Optional[torch.Tensor],
-        global_prior: Optional[torch.Tensor],
+        global_prior: Optional[torch.Tensor] = None,
+        section_log_len: Optional[torch.Tensor] = None,
     ):
-        h = x + self.attention(self.attention_norm(x), mask, global_prior)
+        h = x + self.attention(self.attention_norm(x), mask, global_prior, section_log_len)
         out = h + self.feed_forward(self.ffn_norm(h))
         return out
 
-import os
-def print0(*args, **kwargs):
-    # modified print that only prints from the master process
-    # if this is not a distributed run, it's just a print
-    if int(os.environ.get("RANK", 0)) == 0:
-        print(*args, **kwargs)
-
-class BATransformer(nn.Module):
-    def __init__(self, params: BATModelArgs):
+class SSMaxBATransformer(nn.Module):
+    def __init__(self, params: SSMaxBATModelArgs):
         super().__init__()
         self.params = params
         self.vocab_size = params.vocab_size
@@ -247,7 +275,21 @@ class BATransformer(nn.Module):
         bsz, seqlen = tokens.shape
         h = self.tok_embeddings(tokens)
 
-        seq_codes = seq_codes if seq_codes is not None else torch.zeros_like(tokens, device=tokens.device)
+        if seq_codes is not None:
+            correction = torch.zeros_like(seq_codes, device=tokens.device)
+            positions = torch.arange(seq_codes.size(-1), device=tokens.device).unsqueeze(0)
+            positions = positions.repeat(seq_codes.size(0), 1)
+
+            first_tokens = seq_codes.diff(dim=-1) != 0
+            correction[:,1:][first_tokens] = positions[:,1:][first_tokens]
+
+            correction = correction.cummax(dim=-1).values
+            positions = positions - correction + 1
+            section_log_len = positions.log().unsqueeze(1)
+        else:
+            section_log_len = torch.arange(1, seqlen+1).log().unsqueeze(0).unsqueeze(0).to(tokens.device).repeat(bsz, 1, 1)
+            seq_codes = torch.zeros_like(tokens, device=tokens.device)
+
         def mask_mod(b, h, q_idx, kv_idx):
             causal_mask = q_idx >= kv_idx
             seq_mask = seq_codes[b, q_idx] == seq_codes[b, kv_idx]
@@ -258,8 +300,9 @@ class BATransformer(nn.Module):
         if self.global_positional_encoding:
             global_prior = self.prior(seqlen)
 
+
         for layer in self.layers:
-            h = layer(h, mask, global_prior)
+            h = layer(h, mask, global_prior, section_log_len)
         h = self.norm(h)
         if return_hidden:
             return h

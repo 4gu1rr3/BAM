@@ -233,6 +233,8 @@ class DAPETransformerBlock(nn.Module):
 # ---------------------------------------------------------------------------
 
 class DAPEALiBiTransformer(nn.Module):
+    BLOCK_CLS = None
+
     def __init__(self, params: DAPEALiBiModelArgs):
         super().__init__()
         self.params = params
@@ -243,7 +245,7 @@ class DAPEALiBiTransformer(nn.Module):
 
         self.layers = torch.nn.ModuleList()
         for layer_id in range(params.n_layers):
-            self.layers.append(DAPETransformerBlock(layer_id, params))
+            self.layers.append(self.BLOCK_CLS(layer_id, params))
 
         self.norm = RMSNorm(params.dim, eps=params.norm_eps)
         self.output = nn.Linear(params.dim, params.vocab_size, bias=False)
@@ -342,3 +344,6 @@ class DAPEALiBiTransformer(nn.Module):
         start = 2 ** (-2 ** -(math.log2(n) - 3))
         ratio = start
         return [start * ratio ** i for i in range(n)]
+
+
+DAPEALiBiTransformer.BLOCK_CLS = DAPETransformerBlock

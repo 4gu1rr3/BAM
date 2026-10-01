@@ -20,8 +20,13 @@ from models.bam_ssmax import SSMaxBATransformer, SSMaxBATModelArgs
 from models.nope import NoPEModelArgs, NoPETransformer
 from models.nope_ssmax import NoPESSMaxModelArgs, NoPESSMaxTransformer
 from models.cabam_ssmax import SSMaxBATransformer as CABAMTransformer, SSMaxBATModelArgs as CABAMModelArgs
+from models.cabam_gated_ssmax import SSMaxBATransformer as CABAMGatedTransformer, SSMaxBATModelArgs as CABAMGatedModelArgs
+from models.cabam_wnorm_ssmax import SSMaxBATransformer as CABAMWNormTransformer, SSMaxBATModelArgs as CABAMWNormModelArgs
+from models.cabam_wnorm import SSMaxBATransformer as CABAMWNormNoSSTransformer, SSMaxBATModelArgs as CABAMWNormNoSSModelArgs
 from models.dape_alibi import DAPEALiBiTransformer, DAPEALiBiModelArgs
 from models.cope import CoPETransformer, CoPEModelArgs
+from models.cope_ssmax import CoPESSMaxTransformer, CoPESSMaxModelArgs
+from models.dape_alibi_ssmax import DAPEALiBiSSMaxTransformer, DAPEALiBiSSMaxModelArgs
 
 
 class PasskeyEvaluator:
@@ -487,8 +492,14 @@ class Evaluator:
             "nope":         (NoPEModelArgs,         NoPETransformer         ),
             "nope_ssmax":   (NoPESSMaxModelArgs,    NoPESSMaxTransformer    ),
             "cabam":        (CABAMModelArgs,        CABAMTransformer        ),
+            "cabam_ssmax":  (CABAMModelArgs,        CABAMTransformer        ),
+            "cabam_gated_ssmax": (CABAMGatedModelArgs, CABAMGatedTransformer ),
+            "cabam_wnorm_ssmax": (CABAMWNormModelArgs, CABAMWNormTransformer ),
+            "cabam_wnorm":  (CABAMWNormNoSSModelArgs, CABAMWNormNoSSTransformer),
             "dape_alibi":   (DAPEALiBiModelArgs,    DAPEALiBiTransformer    ),
             "cope":         (CoPEModelArgs,         CoPETransformer         ),
+            "cope_ssmax":   (CoPESSMaxModelArgs,    CoPESSMaxTransformer    ),
+            "dape_alibi_ssmax": (DAPEALiBiSSMaxModelArgs, DAPEALiBiSSMaxTransformer),
         }[args['args']['position_encoding']]
         model_dict = torch.load(os.path.join(dir, f'model.pt'))
         model = Transformer(ModelArgs(**args['model_args']))
